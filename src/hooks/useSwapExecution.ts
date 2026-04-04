@@ -17,6 +17,7 @@ export function useSwapExecution() {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
+  const { activeChain } = useChain();
   const [step, setStep] = useState<SwapStep>('idle');
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,9 +40,10 @@ export function useSwapExecution() {
       setError(null);
       setTxHash(null);
 
+      const contracts = getContractsForChain(activeChain.id);
       const parsedAmountIn = parseUnits(amountIn, tokenIn.decimals);
-      const inAddr = getSwapAddress(tokenIn.address);
-      const outAddr = getSwapAddress(tokenOut.address);
+      const inAddr = getSwapAddress(tokenIn.address, activeChain.id);
+      const outAddr = getSwapAddress(tokenOut.address, activeChain.id);
       const isETHIn = isNativeETH(tokenIn.address);
 
       const slippageMultiplier = BigInt(Math.floor((1 - slippagePct / 100) * 10000));
@@ -54,7 +56,7 @@ export function useSwapExecution() {
           address: inAddr,
           abi: ERC20_ABI,
           functionName: 'allowance',
-          args: [address, UNISWAP_ADDRESSES.swapRouter02],
+          args: [address, contracts.swapRouter02],
         });
 
         if ((allowance as bigint) < parsedAmountIn) {
@@ -64,8 +66,8 @@ export function useSwapExecution() {
             address: inAddr,
             abi: ERC20_ABI,
             functionName: 'approve',
-            args: [UNISWAP_ADDRESSES.swapRouter02, maxUint256],
-            chain: sepolia,
+            args: [contracts.swapRouter02, maxUint256],
+            chain: walletClient.chain,
             account: address,
           });
 
@@ -76,7 +78,7 @@ export function useSwapExecution() {
       setStep('swapping');
 
       const swapHash = await walletClient.writeContract({
-        address: UNISWAP_ADDRESSES.swapRouter02,
+        address: contracts.swapRouter02,
         abi: SWAP_ROUTER_ABI,
         functionName: 'exactInputSingle',
         args: [
@@ -91,7 +93,7 @@ export function useSwapExecution() {
           },
         ],
         value: isETHIn ? parsedAmountIn : 0n,
-        chain: sepolia,
+        chain: walletClient.chain,
         account: address,
       });
 
