@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { parseUnits, parseEther } from 'viem';
-import { sepolia } from 'viem/chains';
-import { SEPOLIA_TOKENS, CHAINS, type Token } from '@/lib/tokens';
+import { type Token } from '@/lib/tokens';
 import { ERC20_ABI, isNativeETH } from '@/lib/contracts';
 import { useBackendMode } from '@/lib/backend-context';
+import { useChain } from '@/lib/chain-context';
 import TokenSelector from '@/components/TokenSelector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
