@@ -3,11 +3,14 @@ import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { config } from '@/lib/wagmi-config';
 import { BackendProvider, useBackendMode } from '@/lib/backend-context';
+import { ChainProvider } from '@/lib/chain-context';
 import WalletConnect from '@/components/WalletConnect';
+import ChainSelector from '@/components/ChainSelector';
 import SwapTab from '@/components/tabs/SwapTab';
 import SendTab from '@/components/tabs/SendTab';
 import MerchantTab from '@/components/tabs/MerchantTab';
 import SettingsTab from '@/components/tabs/SettingsTab';
+import { useChain } from '@/lib/chain-context';
 
 const wagmiQueryClient = new QueryClient();
 
@@ -55,6 +58,7 @@ const BackendToggle = () => {
 
 const DashboardContent = () => {
   const [activeTab, setActiveTab] = useState<Tab>('swap');
+  const { activeChain } = useChain();
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -67,10 +71,13 @@ const DashboardContent = () => {
           <div className="flex items-center gap-3">
             <span className="text-2xl">🦄</span>
             <h1 className="text-xl font-bold gradient-text">UniSwap Dev Console</h1>
-            <span className="text-[10px] bg-warning/20 text-warning px-1.5 py-0.5 rounded-full font-medium">SEPOLIA</span>
+            {activeChain.id === 11155111 && (
+              <span className="text-[10px] bg-warning/20 text-warning px-1.5 py-0.5 rounded-full font-medium">TESTNET</span>
+            )}
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <BackendToggle />
+            <ChainSelector />
             <WalletConnect />
           </div>
         </div>
@@ -111,7 +118,9 @@ const Index = () => (
   <WagmiProvider config={config}>
     <QueryClientProvider client={wagmiQueryClient}>
       <BackendProvider>
-        <DashboardContent />
+        <ChainProvider>
+          <DashboardContent />
+        </ChainProvider>
       </BackendProvider>
     </QueryClientProvider>
   </WagmiProvider>
