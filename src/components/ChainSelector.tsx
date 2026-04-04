@@ -20,7 +20,7 @@ const ChainSelector = () => {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 w-56 glass rounded-xl border border-border/50 p-2 shadow-lg max-h-80 overflow-y-auto">
+          <div className="fixed right-4 top-16 z-[9999] w-56 glass rounded-xl border border-border/50 p-2 shadow-lg max-h-80 overflow-y-auto">
             {SUPPORTED_CHAINS.map(chain => (
               <button
                 key={chain.id}
