@@ -13,6 +13,7 @@ import { useTokenBalances } from '@/hooks/useTokenBalances';
 const ROUTE_MODES: { id: RouteMode; icon: string; label: string; desc: string }[] = [
   { id: 'auto', icon: '🌐', label: 'Auto', desc: 'Best route via V2/V3/UniswapX' },
   { id: 'payment', icon: '⚡', label: 'Payment', desc: 'Deterministic, no solver delay' },
+  { id: 'protected', icon: '🛡', label: 'Protected', desc: 'MEV-shielded via UniswapX' },
 ];
 
 const STEP_LABELS: Record<string, string> = {
