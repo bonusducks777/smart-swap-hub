@@ -3,31 +3,26 @@ import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { parseUnits, parseEther } from 'viem';
 import { type Token } from '@/lib/tokens';
 import { ERC20_ABI, isNativeETH } from '@/lib/contracts';
-import { useBackendMode } from '@/lib/backend-context';
 import { useChain } from '@/lib/chain-context';
 import TokenSelector from '@/components/TokenSelector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
-import { useUniswapQuote, type RouteMode } from '@/hooks/useUniswapQuote';
 import { useUniswapApiQuote } from '@/hooks/useUniswapApiQuote';
-import { useSwapExecution } from '@/hooks/useSwapExecution';
 import { useApiSwapExecution } from '@/hooks/useApiSwapExecution';
+import type { RouteMode } from '@/hooks/useUniswapQuote';
 
 type TxStatus = 'idle' | 'sending' | 'confirming' | 'done' | 'error';
 
-const ROUTE_MODES: { id: RouteMode; icon: string; label: string }[] = [
-  { id: 'cheapest', icon: '💸', label: 'Save Money' },
-  { id: 'fastest', icon: '⚡', label: 'Instant' },
-  { id: 'safe', icon: '🛡', label: 'Protected' },
-  { id: 'crosschain', icon: '🌉', label: 'Global' },
+const ROUTE_MODES: { id: RouteMode; icon: string; label: string; desc: string }[] = [
+  { id: 'auto', icon: '🌐', label: 'Auto', desc: 'Best route' },
+  { id: 'payment', icon: '⚡', label: 'Payment', desc: 'Deterministic' },
 ];
 
 const SendTab = () => {
   const { isConnected, address } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
-  const { mode } = useBackendMode();
   const { activeChain } = useChain();
   const { balances } = useTokenBalances();
   const chainTokens = activeChain.tokens;
@@ -42,9 +37,8 @@ const SendTab = () => {
 
   // Swap-and-send state
   const [swapFromToken, setSwapFromToken] = useState<Token>(chainTokens[0]);
-  const [routeMode, setRouteMode] = useState<RouteMode>('fastest');
+  const [routeMode, setRouteMode] = useState<RouteMode>('payment');
 
-  // Reset tokens when chain changes
   useEffect(() => {
     setSendToken(chainTokens[0]);
     setSwapFromToken(chainTokens[0]);
@@ -56,14 +50,9 @@ const SendTab = () => {
   const hasBalance = senderBalance && parseFloat(senderBalance.formatted) > 0;
   const needsSwap = !hasBalance && amount && parseFloat(amount) > 0;
 
-  // Swap quotes (always called for hooks rules)
-  const onchainQuote = useUniswapQuote(swapFromToken, sendToken, mode === 'onchain' && needsSwap ? amount : '', routeMode);
-  const apiQuote = useUniswapApiQuote(swapFromToken, sendToken, mode === 'api' && needsSwap ? amount : '', routeMode);
-  const onchainSwap = useSwapExecution();
+  // Swap quote & execution
+  const apiQuote = useUniswapApiQuote(swapFromToken, sendToken, needsSwap ? amount : '', routeMode);
   const apiSwap = useApiSwapExecution();
-
-  const activeQuote = mode === 'onchain' ? onchainQuote : apiQuote;
-  const activeSwap = mode === 'onchain' ? onchainSwap : apiSwap;
 
   const swapFromBalance = balances.find(b => b.symbol === swapFromToken.symbol);
 
@@ -115,16 +104,9 @@ const SendTab = () => {
   };
 
   const handleSwapThenSend = () => {
-    const quote = activeQuote.quote;
+    const quote = apiQuote.quote;
     if (!quote) return;
-
-    if (mode === 'onchain') {
-      const q = quote as { amountOut: bigint; feeTier: number };
-      onchainSwap.executeSwap(swapFromToken, sendToken, amount, q.amountOut, q.feeTier, 0.5);
-    } else {
-      const q = quote as import('@/hooks/useUniswapApiQuote').ApiQuoteResult;
-      apiSwap.executeSwap(q);
-    }
+    apiSwap.executeSwap(quote);
   };
 
   // Confirm screen
@@ -152,10 +134,6 @@ const SendTab = () => {
             </div>
           </div>
 
-          <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 text-xs text-warning">
-            ⚠️ Cross-chain bridging is not wired up on testnet. This sends directly on Sepolia.
-          </div>
-
           {txStatus !== 'idle' && (
             <div className={`rounded-lg p-3 text-sm animate-slide-up ${
               txStatus === 'done' ? 'bg-success/10 text-success' :
@@ -171,7 +149,7 @@ const SendTab = () => {
               {txError && <div className="text-xs mt-1 break-all">{txError}</div>}
               {txHash && (
                 <a href={`${activeChain.explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs underline mt-1 block">
-                  View on Etherscan →
+                  View on Explorer →
                 </a>
               )}
             </div>
@@ -198,8 +176,32 @@ const SendTab = () => {
       <div className="glass rounded-xl p-4 space-y-4">
         <h3 className="text-lg font-semibold text-foreground">Send Tokens</h3>
         <p className="text-sm text-muted-foreground">
-          Send ETH or ERC-20 tokens to any address on Sepolia testnet.
+          Send tokens to any address on {activeChain.name}.
         </p>
+
+        {/* Wallet Balances */}
+        {isConnected && balances.length > 0 && (
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground font-medium">Your Balances</label>
+            <div className="bg-secondary rounded-lg p-3 space-y-1.5 max-h-32 overflow-y-auto">
+              {balances.map(b => (
+                <button
+                  key={b.symbol}
+                  onClick={() => {
+                    const token = chainTokens.find(t => t.symbol === b.symbol);
+                    if (token) setSendToken(token);
+                  }}
+                  className={`flex items-center justify-between w-full px-2 py-1.5 rounded-md text-xs transition-colors ${
+                    sendToken.symbol === b.symbol ? 'bg-primary/10 text-primary' : 'hover:bg-secondary/80 text-foreground'
+                  }`}
+                >
+                  <span className="font-medium">{b.symbol}</span>
+                  <span className="font-mono">{b.formatted}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Recipient */}
         <div className="space-y-1.5">
@@ -255,14 +257,14 @@ const SendTab = () => {
               </div>
               <div className="flex gap-2 items-center bg-secondary rounded-lg p-3">
                 <div className="flex-1 text-sm text-muted-foreground">
-                  {activeQuote.isLoading ? (
+                  {apiQuote.isLoading ? (
                     <span className="animate-pulse">Fetching quote…</span>
-                  ) : activeQuote.quote ? (
+                  ) : apiQuote.quote ? (
                     <span className="text-foreground font-mono">
-                      ~{parseFloat(activeQuote.quote.formattedOut).toFixed(6)} {sendToken.symbol}
+                      ~{parseFloat(apiQuote.quote.formattedOut).toFixed(6)} {sendToken.symbol}
                     </span>
-                  ) : activeQuote.error ? (
-                    <span className="text-destructive text-xs">{activeQuote.error}</span>
+                  ) : apiQuote.error ? (
+                    <span className="text-destructive text-xs">{apiQuote.error}</span>
                   ) : (
                     '—'
                   )}
@@ -272,7 +274,7 @@ const SendTab = () => {
             </div>
 
             {/* Route mode */}
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-2 gap-1.5">
               {ROUTE_MODES.map(rm => (
                 <button
                   key={rm.id}
@@ -290,19 +292,19 @@ const SendTab = () => {
             </div>
 
             {/* Swap status */}
-            {activeSwap.step !== 'idle' && (
+            {apiSwap.step !== 'idle' && (
               <div className={`rounded-lg p-3 text-xs animate-slide-up ${
-                activeSwap.step === 'done' ? 'bg-success/10 text-success' :
-                activeSwap.step === 'error' ? 'bg-destructive/10 text-destructive' :
+                apiSwap.step === 'done' ? 'bg-success/10 text-success' :
+                apiSwap.step === 'error' ? 'bg-destructive/10 text-destructive' :
                 'bg-info/10 text-info'
               }`}>
                 <div className="font-medium">
-                  {activeSwap.step === 'done' ? 'Swap complete! Now send below ✓' : activeSwap.step === 'error' ? 'Swap failed' : `${activeSwap.step}…`}
+                  {apiSwap.step === 'done' ? 'Swap complete! Now send below ✓' : apiSwap.step === 'error' ? 'Swap failed' : `${apiSwap.step}…`}
                 </div>
-                {activeSwap.error && <div className="text-xs mt-1 break-all">{activeSwap.error}</div>}
-                {activeSwap.txHash && (
-                  <a href={`${activeChain.explorerUrl}/tx/${activeSwap.txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs underline mt-1 block">
-                    View swap on Etherscan →
+                {apiSwap.error && <div className="text-xs mt-1 break-all">{apiSwap.error}</div>}
+                {apiSwap.txHash && (
+                  <a href={`${activeChain.explorerUrl}/tx/${apiSwap.txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs underline mt-1 block">
+                    View swap on Explorer →
                   </a>
                 )}
               </div>
@@ -311,14 +313,14 @@ const SendTab = () => {
             <Button
               className="w-full"
               variant="outline"
-              disabled={!activeQuote.quote || ['swapping', 'approving', 'checking-allowance', 'checking-approval', 'signing-permit', 'building-swap'].includes(activeSwap.step)}
+              disabled={!apiQuote.quote || ['swapping', 'approving', 'checking-approval', 'signing-permit', 'building-swap'].includes(apiSwap.step)}
               onClick={handleSwapThenSend}
             >
-              {activeSwap.step === 'done'
+              {apiSwap.step === 'done'
                 ? '✓ Swapped — Now Send Below'
-                : activeQuote.isLoading
+                : apiQuote.isLoading
                 ? 'Getting Quote…'
-                : activeQuote.quote
+                : apiQuote.quote
                 ? `Swap ${swapFromToken.symbol} → ${sendToken.symbol} First`
                 : `Select source token`}
             </Button>
@@ -328,7 +330,7 @@ const SendTab = () => {
         <Button
           className="w-full h-12 text-base font-semibold"
           style={{ background: isConnected && isValidAddress && amount ? 'var(--gradient-primary)' : undefined }}
-          disabled={!isConnected || !isValidAddress || !amount || (!!needsSwap && activeSwap.step !== 'done')}
+          disabled={!isConnected || !isValidAddress || !amount || (!!needsSwap && apiSwap.step !== 'done')}
           onClick={() => setStep('confirm')}
         >
           {!isConnected
@@ -337,7 +339,7 @@ const SendTab = () => {
             ? 'Enter Valid Address'
             : !amount
             ? 'Enter Amount'
-            : needsSwap && activeSwap.step !== 'done'
+            : needsSwap && apiSwap.step !== 'done'
             ? `Swap ${sendToken.symbol} First ↑`
             : 'Review Transaction'}
         </Button>

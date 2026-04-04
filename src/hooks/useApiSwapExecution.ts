@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
-import { useBackendMode } from '@/lib/backend-context';
 import { uniswapApiCall } from '@/lib/uniswap-api';
 import { useChain } from '@/lib/chain-context';
 import type { ApiQuoteResult } from '@/hooks/useUniswapApiQuote';
@@ -13,11 +12,12 @@ export function useApiSwapExecution() {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
-  const { apiKey } = useBackendMode();
   const { activeChain } = useChain();
   const [step, setStep] = useState<ApiSwapStep>('idle');
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const apiKey = localStorage.getItem('uniswap_api_key') || '';
 
   const executeSwap = async (apiQuote: ApiQuoteResult) => {
     if (!address || !publicClient || !walletClient || !apiKey) {

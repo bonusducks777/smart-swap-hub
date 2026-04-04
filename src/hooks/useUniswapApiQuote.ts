@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { parseUnits } from 'viem';
-import { useBackendMode } from '@/lib/backend-context';
 import { useChain } from '@/lib/chain-context';
 import { uniswapApiCall } from '@/lib/uniswap-api';
 import { isNativeETH } from '@/lib/contracts';
@@ -28,37 +27,31 @@ function getApiTokenAddress(token: Token): string {
 
 function getRoutingPreference(routeMode: RouteMode): Record<string, any> {
   switch (routeMode) {
-    case 'cheapest':
-      return { protocols: ['UNISWAPX_V3'] };
-    case 'fastest':
+    case 'payment':
+      // Deterministic, no solver delay — best for checkout UX
       return { protocols: ['V3', 'V2'] };
-    case 'safe':
-      return { protocols: ['UNISWAPX_V3'] };
-    case 'crosschain':
+    case 'auto':
     default:
+      // Let the API pick the best route
       return { protocols: ['V3', 'V2', 'UNISWAPX_V3'] };
   }
-}
-
-function shouldRetryWithoutProtocols(routeMode: RouteMode, message: string): boolean {
-  if (routeMode === 'fastest') return false;
-
-  const normalized = message.toLowerCase();
-  return normalized.includes('invalid value') || normalized.includes('requestvalidationerror');
 }
 
 export function useUniswapApiQuote(
   tokenIn: Token,
   tokenOut: Token,
   amountIn: string,
-  routeMode: RouteMode = 'cheapest',
+  routeMode: RouteMode = 'auto',
+  apiKey?: string,
 ) {
   const [quote, setQuote] = useState<ApiQuoteResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { apiKey } = useBackendMode();
   const { address } = useAccount();
   const { activeChain } = useChain();
+
+  // Get API key from param or localStorage
+  const resolvedApiKey = apiKey || localStorage.getItem('uniswap_api_key') || '';
 
   useEffect(() => {
     const fetchQuote = async () => {
@@ -68,7 +61,7 @@ export function useUniswapApiQuote(
         return;
       }
 
-      if (!apiKey) {
+      if (!resolvedApiKey) {
         setQuote(null);
         setError('API key required — enter it in the Settings tab');
         setIsLoading(false);
@@ -77,7 +70,7 @@ export function useUniswapApiQuote(
 
       if (!address) {
         setQuote(null);
-        setError('Connect wallet to get API quotes');
+        setError('Connect wallet to get quotes');
         setIsLoading(false);
         return;
       }
@@ -106,15 +99,17 @@ export function useUniswapApiQuote(
         let data: any;
 
         try {
-          ({ data } = await uniswapApiCall('quote', apiKey, preferredPayload));
+          ({ data } = await uniswapApiCall('quote', resolvedApiKey, preferredPayload));
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'API quote failed';
+          const normalized = msg.toLowerCase();
 
-          if (!shouldRetryWithoutProtocols(routeMode, msg)) {
+          // If forced protocols fail (e.g. UNISWAPX_V3 not available), retry without
+          if (routeMode !== 'payment' && (normalized.includes('invalid value') || normalized.includes('requestvalidationerror'))) {
+            ({ data } = await uniswapApiCall('quote', resolvedApiKey, basePayload));
+          } else {
             throw err;
           }
-
-          ({ data } = await uniswapApiCall('quote', apiKey, basePayload));
         }
 
         const rawAmountOut = BigInt(data.quote?.output?.amount || data.quote?.amountOut || data.quote?.amount || '0');
@@ -143,7 +138,7 @@ export function useUniswapApiQuote(
 
     const timeout = setTimeout(fetchQuote, 500);
     return () => clearTimeout(timeout);
-  }, [apiKey, address, tokenIn.address, tokenOut.address, amountIn, tokenIn.decimals, tokenOut.decimals, routeMode, activeChain.id]);
+  }, [resolvedApiKey, address, tokenIn.address, tokenOut.address, amountIn, tokenIn.decimals, tokenOut.decimals, routeMode, activeChain.id]);
 
   return { quote, isLoading, error };
 }
