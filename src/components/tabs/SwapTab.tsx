@@ -246,12 +246,12 @@ const SwapTab = () => {
             {swapError && <div className="text-xs mt-1 break-all">{swapError}</div>}
             {txHash && (
               <a
-                href={`https://sepolia.etherscan.io/tx/${txHash}`}
+                href={`${activeChain.explorerUrl}/tx/${txHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs underline mt-1 block"
               >
-                View on Etherscan →
+                View on Explorer →
               </a>
             )}
           </div>
