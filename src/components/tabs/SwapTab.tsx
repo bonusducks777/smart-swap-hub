@@ -34,11 +34,20 @@ const STEP_LABELS: Record<string, string> = {
 const SwapTab = () => {
   const { isConnected } = useAccount();
   const { mode } = useBackendMode();
-  const [fromToken, setFromToken] = useState<Token>(SEPOLIA_TOKENS[0]);
-  const [toToken, setToToken] = useState<Token>(SEPOLIA_TOKENS[2]);
+  const { activeChain } = useChain();
+  const chainTokens = activeChain.tokens;
+  const [fromToken, setFromToken] = useState<Token>(chainTokens[0]);
+  const [toToken, setToToken] = useState<Token>(chainTokens.length > 2 ? chainTokens[2] : chainTokens[1] || chainTokens[0]);
   const [fromAmount, setFromAmount] = useState('');
   const [routeMode, setRouteMode] = useState<RouteMode>('cheapest');
   const [slippage, setSlippage] = useState('0.5');
+
+  // Reset tokens when chain changes
+  useEffect(() => {
+    setFromToken(chainTokens[0]);
+    setToToken(chainTokens.length > 2 ? chainTokens[2] : chainTokens[1] || chainTokens[0]);
+    setFromAmount('');
+  }, [activeChain.id]);
 
   // On-chain hooks (always called, React rules of hooks)
   const onchainQuote = useUniswapQuote(fromToken, toToken, mode === 'onchain' ? fromAmount : '', routeMode);
