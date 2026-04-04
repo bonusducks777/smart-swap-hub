@@ -161,14 +161,29 @@ const SwapTab = () => {
               <span className="text-muted-foreground">Gas Estimate</span>
               <span className="text-foreground font-mono">{gasEstLabel}</span>
             </div>
-            {priceImpact && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Price Impact</span>
-                <span className={`font-mono ${parseFloat(priceImpact) > 3 ? 'text-destructive' : parseFloat(priceImpact) > 1 ? 'text-warning' : 'text-foreground'}`}>
-                  {priceImpact}
-                </span>
-              </div>
-            )}
+            {priceImpact && (() => {
+              const impact = parseFloat(priceImpact);
+              const slippageNum = parseFloat(slippage);
+              const isCloseToSlippage = impact >= slippageNum * 0.7;
+              const isOverSlippage = impact >= slippageNum;
+              return (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Price Impact</span>
+                    <span className={`font-mono ${isOverSlippage ? 'text-destructive' : isCloseToSlippage ? 'text-warning' : impact > 1 ? 'text-warning' : 'text-foreground'}`}>
+                      {priceImpact}
+                    </span>
+                  </div>
+                  {isCloseToSlippage && (
+                    <div className={`rounded-md px-2 py-1.5 text-[10px] font-medium ${isOverSlippage ? 'bg-destructive/10 text-destructive' : 'bg-warning/10 text-warning'}`}>
+                      ⚠️ {isOverSlippage
+                        ? `Price impact (${priceImpact}) exceeds your slippage tolerance (${slippage}%) — tx will likely revert`
+                        : `Price impact (${priceImpact}) is close to your slippage tolerance (${slippage}%) — consider adjusting`}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Min. Output ({slippage}% slippage)</span>
               <span className="text-foreground font-mono">
