@@ -170,7 +170,7 @@ const SendTab = () => {
               </div>
               {txError && <div className="text-xs mt-1 break-all">{txError}</div>}
               {txHash && (
-                <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs underline mt-1 block">
+                <a href={`${activeChain.explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs underline mt-1 block">
                   View on Etherscan →
                 </a>
               )}
@@ -301,7 +301,7 @@ const SendTab = () => {
                 </div>
                 {activeSwap.error && <div className="text-xs mt-1 break-all">{activeSwap.error}</div>}
                 {activeSwap.txHash && (
-                  <a href={`https://sepolia.etherscan.io/tx/${activeSwap.txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs underline mt-1 block">
+                  <a href={`${activeChain.explorerUrl}/tx/${activeSwap.txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs underline mt-1 block">
                     View swap on Etherscan →
                   </a>
                 )}
