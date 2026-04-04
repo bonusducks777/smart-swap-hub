@@ -4,11 +4,11 @@ import { SEPOLIA_TOKENS, type Token } from '@/lib/tokens';
 import TokenSelector from '@/components/TokenSelector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useUniswapQuote } from '@/hooks/useUniswapQuote';
+import { useUniswapQuote, type RouteMode } from '@/hooks/useUniswapQuote';
 import { useSwapExecution } from '@/hooks/useSwapExecution';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 
-type RouteMode = 'cheapest' | 'fastest' | 'safe' | 'crosschain';
+// RouteMode type is imported from useUniswapQuote
 
 const ROUTE_MODES: { id: RouteMode; icon: string; label: string; desc: string }[] = [
   { id: 'cheapest', icon: '💸', label: 'Save Money', desc: 'Best price, may take longer' },
@@ -34,7 +34,7 @@ const SwapTab = () => {
   const [routeMode, setRouteMode] = useState<RouteMode>('cheapest');
   const [slippage, setSlippage] = useState('0.5');
 
-  const { quote, isLoading: quoteLoading, error: quoteError } = useUniswapQuote(fromToken, toToken, fromAmount);
+  const { quote, isLoading: quoteLoading, error: quoteError } = useUniswapQuote(fromToken, toToken, fromAmount, routeMode);
   const { executeSwap, step, txHash, error: swapError, reset } = useSwapExecution();
   const { balances } = useTokenBalances();
 
@@ -69,10 +69,9 @@ const SwapTab = () => {
           <button
             key={mode.id}
             onClick={() => setRouteMode(mode.id)}
-            disabled={mode.id === 'crosschain'}
             className={`glass rounded-lg p-3 text-center transition-all ${
               routeMode === mode.id ? 'border-primary/60 glow-primary' : 'hover:border-primary/30'
-            } ${mode.id === 'crosschain' ? 'opacity-50 cursor-not-allowed' : ''}`}
+            }`}
           >
             <div className="text-xl mb-1">{mode.icon}</div>
             <div className="text-xs font-semibold text-foreground">{mode.label}</div>
@@ -81,11 +80,6 @@ const SwapTab = () => {
         ))}
       </div>
 
-      {routeMode === 'safe' && (
-        <div className="bg-info/10 border border-info/30 rounded-lg p-3 text-xs text-info">
-          🛡 UniswapX private order flow is not available on Sepolia. Swap will execute via standard routing, but the UI demonstrates the UX pattern.
-        </div>
-      )}
 
       {/* Swap Card */}
       <div className="glass rounded-xl p-4 space-y-3">
