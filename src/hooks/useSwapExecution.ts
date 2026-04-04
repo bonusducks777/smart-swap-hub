@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { parseUnits, maxUint256 } from 'viem';
-import { sepolia } from 'viem/chains';
 import {
-  UNISWAP_ADDRESSES,
   SWAP_ROUTER_ABI,
   ERC20_ABI,
   isNativeETH,
   getSwapAddress,
+  getContractsForChain,
 } from '@/lib/contracts';
+import { useChain } from '@/lib/chain-context';
 import type { Token } from '@/lib/tokens';
 
 export type SwapStep = 'idle' | 'checking-allowance' | 'approving' | 'swapping' | 'done' | 'error';
