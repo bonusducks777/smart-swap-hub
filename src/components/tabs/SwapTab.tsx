@@ -196,7 +196,7 @@ const SwapTab = () => {
         {/* Slippage */}
         <div className="flex items-center gap-2 text-xs">
           <span className="text-muted-foreground">Slippage:</span>
-          {['0.1', '0.5', '1.0'].map(s => (
+          {['1', '3', '5', '10'].map(s => (
             <button
               key={s}
               onClick={() => setSlippage(s)}

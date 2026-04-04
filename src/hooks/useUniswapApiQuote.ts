@@ -93,7 +93,7 @@ export function useUniswapApiQuote(
           type: quoteType,
           amount: parsedAmount,
           swapper: address,
-          slippageTolerance: 0.5,
+          slippageTolerance: 5,
           ...(recipient ? { recipient } : {}),
         };
 
