@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { config } from '@/lib/wagmi-config';
+import { BackendProvider, useBackendMode } from '@/lib/backend-context';
 import WalletConnect from '@/components/WalletConnect';
 import SwapTab from '@/components/tabs/SwapTab';
 import SendTab from '@/components/tabs/SendTab';
@@ -19,6 +20,39 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'settings', icon: '⚙️', label: 'Settings' },
 ];
 
+const BackendToggle = () => {
+  const { mode, setMode, hasApiKey } = useBackendMode();
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`text-xs font-medium transition-colors ${mode === 'onchain' ? 'text-foreground' : 'text-muted-foreground'}`}>
+        On-Chain
+      </span>
+      <button
+        onClick={() => setMode(mode === 'onchain' ? 'api' : 'onchain')}
+        className={`relative w-12 h-6 rounded-full transition-colors ${
+          mode === 'api' ? 'bg-primary' : 'bg-muted'
+        }`}
+        title={mode === 'onchain' ? 'Using QuoterV2 contract directly' : 'Using Uniswap Trading API'}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background shadow transition-transform ${
+            mode === 'api' ? 'translate-x-6' : 'translate-x-0'
+          }`}
+        />
+      </button>
+      <span className={`text-xs font-medium transition-colors ${mode === 'api' ? 'text-foreground' : 'text-muted-foreground'}`}>
+        API
+      </span>
+      {mode === 'api' && !hasApiKey && (
+        <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded-full font-medium">
+          No Key
+        </span>
+      )}
+    </div>
+  );
+};
+
 const DashboardContent = () => {
   const [activeTab, setActiveTab] = useState<Tab>('swap');
 
@@ -35,7 +69,10 @@ const DashboardContent = () => {
             <h1 className="text-xl font-bold gradient-text">UniSwap Dev Console</h1>
             <span className="text-[10px] bg-warning/20 text-warning px-1.5 py-0.5 rounded-full font-medium">SEPOLIA</span>
           </div>
-          <WalletConnect />
+          <div className="flex items-center gap-4">
+            <BackendToggle />
+            <WalletConnect />
+          </div>
         </div>
       </header>
 
@@ -73,7 +110,9 @@ const DashboardContent = () => {
 const Index = () => (
   <WagmiProvider config={config}>
     <QueryClientProvider client={wagmiQueryClient}>
-      <DashboardContent />
+      <BackendProvider>
+        <DashboardContent />
+      </BackendProvider>
     </QueryClientProvider>
   </WagmiProvider>
 );
