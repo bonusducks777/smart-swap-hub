@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useBackendMode } from '@/lib/backend-context';
+import { useChain } from '@/lib/chain-context';
 
 const SettingsTab = () => {
-  const { apiKey, setApiKey, mode } = useBackendMode();
+  const [apiKey] = useState(() => localStorage.getItem('uniswap_api_key') || '');
   const [inputKey, setInputKey] = useState(apiKey);
   const [saved, setSaved] = useState(false);
+  const { activeChain } = useChain();
 
   const handleSave = () => {
     if (inputKey) {
-      setApiKey(inputKey);
+      localStorage.setItem('uniswap_api_key', inputKey);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     }
@@ -21,18 +22,12 @@ const SettingsTab = () => {
       <div className="glass rounded-xl p-6 space-y-4">
         <h3 className="text-lg font-semibold text-foreground">API Configuration</h3>
         <p className="text-sm text-muted-foreground">
-          Enter your Uniswap Trading API key to enable API-based routing. Toggle to "API" mode in the header to use it.
+          Enter your Uniswap Trading API key. All swaps and quotes are routed through the Uniswap API.
         </p>
 
-        {mode === 'onchain' && (
-          <div className="bg-info/10 border border-info/30 rounded-lg p-3 text-xs text-info">
-            ℹ️ You're currently using <strong>On-Chain</strong> mode (QuoterV2 contract). No API key needed. Switch to <strong>API</strong> mode in the header to use the Uniswap Trading API.
-          </div>
-        )}
-
-        {mode === 'api' && !apiKey && (
+        {!apiKey && (
           <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 text-xs text-warning">
-            ⚠️ API mode is active but no key is set. Quotes will fail until you save a valid key.
+            ⚠️ No API key set. Quotes will fail until you save a valid key.
           </div>
         )}
 
@@ -64,12 +59,8 @@ const SettingsTab = () => {
       </div>
 
       <div className="glass rounded-xl p-6 space-y-3">
-        <h3 className="text-sm font-semibold text-foreground">Backend Mode</h3>
+        <h3 className="text-sm font-semibold text-foreground">API Key Status</h3>
         <div className="space-y-2 text-xs">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Current Mode</span>
-            <span className="text-foreground font-mono">{mode === 'onchain' ? 'On-Chain (QuoterV2)' : 'Uniswap Trading API'}</span>
-          </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">API Key</span>
             <span className={`font-mono ${apiKey ? 'text-success' : 'text-destructive'}`}>
@@ -84,19 +75,11 @@ const SettingsTab = () => {
         <div className="space-y-2 text-xs">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Network</span>
-            <span className="text-foreground font-mono">Sepolia Testnet</span>
+            <span className="text-foreground font-mono">{activeChain.name}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Chain ID</span>
-            <span className="text-foreground font-mono">11155111</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">RPC</span>
-            <span className="text-foreground font-mono">Default (MetaMask)</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Status</span>
-            <span className="text-success font-medium">● Connected</span>
+            <span className="text-foreground font-mono">{activeChain.id}</span>
           </div>
         </div>
       </div>
