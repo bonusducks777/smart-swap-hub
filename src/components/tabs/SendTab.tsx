@@ -45,6 +45,7 @@ const SendTab = () => {
           value: parseEther(amount),
           chain: sepolia,
           account: address,
+          kzg: undefined as any,
         });
       } else {
         const parsedAmount = parseUnits(amount, sendToken.decimals);
