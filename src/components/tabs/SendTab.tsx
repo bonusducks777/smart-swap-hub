@@ -269,17 +269,24 @@ const SendTab = () => {
                 )}
               </div>
               <div className="flex gap-2 items-center bg-secondary rounded-lg p-3">
-                <div className="flex-1 text-sm text-muted-foreground">
+                <div className="flex-1">
                   {apiQuote.isLoading ? (
-                    <span className="animate-pulse">Fetching quote…</span>
+                    <span className="text-sm text-muted-foreground animate-pulse">Fetching quote…</span>
                   ) : apiQuote.quote ? (
-                    <span className="text-foreground font-mono">
-                      ~{parseFloat(apiQuote.quote.formattedOut).toFixed(6)} {sendToken.symbol}
-                    </span>
+                    <div>
+                      <span className="text-foreground font-mono text-lg font-semibold">
+                        {apiQuote.quote.formattedIn} {swapFromToken.symbol}
+                      </span>
+                      {apiQuote.quote.quote?.gasFeeUSD && (
+                        <span className="text-muted-foreground text-xs ml-2">
+                          + ${parseFloat(apiQuote.quote.quote.gasFeeUSD).toFixed(4)} gas
+                        </span>
+                      )}
+                    </div>
                   ) : apiQuote.error ? (
                     <span className="text-destructive text-xs">{apiQuote.error}</span>
                   ) : (
-                    '—'
+                    <span className="text-sm text-muted-foreground">—</span>
                   )}
                 </div>
                 <TokenSelector selected={swapFromToken} onSelect={setSwapFromToken} exclude={sendToken.symbol} />
