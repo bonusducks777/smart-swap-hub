@@ -9,15 +9,20 @@ import type { RouteMode } from '@/hooks/useUniswapQuote';
 
 const NATIVE_API_ADDRESS = '0x0000000000000000000000000000000000000000';
 
+export type QuoteType = 'EXACT_INPUT' | 'EXACT_OUTPUT';
+
 export interface ApiQuoteResult {
   amountOut: bigint;
   formattedOut: string;
+  amountIn: bigint;
+  formattedIn: string;
   gasEstimate: bigint;
   routing: string;
   quote: any;
   permitData: any | null;
   routeMode: RouteMode;
   chainId: number;
+  quoteType: QuoteType;
 }
 
 function getApiTokenAddress(token: Token): string {
