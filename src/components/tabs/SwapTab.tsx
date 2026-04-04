@@ -4,7 +4,7 @@ import { SEPOLIA_TOKENS, type Token } from '@/lib/tokens';
 import TokenSelector from '@/components/TokenSelector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useUniswapQuote } from '@/hooks/useUniswapQuote';
+import { useUniswapQuote, type RouteMode } from '@/hooks/useUniswapQuote';
 import { useSwapExecution } from '@/hooks/useSwapExecution';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 
