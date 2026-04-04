@@ -137,7 +137,7 @@ export function useUniswapApiQuote(
 
     const timeout = setTimeout(fetchQuote, 500);
     return () => clearTimeout(timeout);
-  }, [resolvedApiKey, address, tokenIn.address, tokenOut.address, amountIn, tokenIn.decimals, tokenOut.decimals, routeMode, activeChain.id]);
+  }, [resolvedApiKey, address, tokenIn.address, tokenOut.address, amountIn, tokenIn.decimals, tokenOut.decimals, routeMode, activeChain.id, recipient]);
 
   return { quote, isLoading, error };
 }
