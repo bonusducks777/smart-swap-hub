@@ -98,7 +98,7 @@ export function useApiSwapExecution() {
           to: tx.to as `0x${string}`,
           data: tx.data as `0x${string}`,
           value: BigInt(tx.value || '0'),
-          chain: sepolia,
+          chain: walletClient.chain,
           account: address,
           ...(tx.gasLimit ? { gas: BigInt(tx.gasLimit) } : {}),
           kzg: undefined as any,
