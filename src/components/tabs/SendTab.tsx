@@ -92,7 +92,7 @@ const SendTab = () => {
           abi: ERC20_ABI,
           functionName: 'transfer',
           args: [recipient as `0x${string}`, parsedAmount],
-          chain: sepolia,
+          chain: walletClient.chain,
           account: address,
         });
       }
