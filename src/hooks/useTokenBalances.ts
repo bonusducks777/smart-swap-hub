@@ -18,15 +18,13 @@ export function useTokenBalances() {
   // ERC20 balances
   const erc20Tokens = SEPOLIA_TOKENS.filter(t => !isNativeETH(t.address));
 
-  const contracts = erc20Tokens.map(token => ({
-    address: token.address as `0x${string}`,
-    abi: ERC20_ABI,
-    functionName: 'balanceOf' as const,
-    args: [address!] as const,
-  }));
-
   const { data: erc20Balances, isLoading } = useReadContracts({
-    contracts,
+    contracts: erc20Tokens.map(token => ({
+      address: token.address as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: 'balanceOf' as const,
+      args: [address!] as readonly [`0x${string}`],
+    })) as any,
     query: { enabled: isConnected && !!address },
   });
 
