@@ -59,7 +59,7 @@ const SwapTab = () => {
   return (
     <div className="max-w-lg mx-auto space-y-4 animate-slide-up">
       {/* Route Mode Selector */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {ROUTE_MODES.map(rm => (
           <button
             key={rm.id}

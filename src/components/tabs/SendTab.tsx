@@ -275,7 +275,7 @@ const SendTab = () => {
             </div>
 
             {/* Route mode */}
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               {ROUTE_MODES.map(rm => (
                 <button
                   key={rm.id}
