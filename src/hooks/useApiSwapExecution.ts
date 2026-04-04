@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
-import { sepolia } from 'viem/chains';
 import { useBackendMode } from '@/lib/backend-context';
 import { uniswapApiCall } from '@/lib/uniswap-api';
+import { useChain } from '@/lib/chain-context';
 import type { ApiQuoteResult } from '@/hooks/useUniswapApiQuote';
 
 export type ApiSwapStep = 'idle' | 'checking-approval' | 'approving' | 'signing-permit' | 'building-swap' | 'swapping' | 'done' | 'error';
@@ -14,6 +14,7 @@ export function useApiSwapExecution() {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const { apiKey } = useBackendMode();
+  const { activeChain } = useChain();
   const [step, setStep] = useState<ApiSwapStep>('idle');
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +37,7 @@ export function useApiSwapExecution() {
           token: apiQuote.quote.tokenIn || apiQuote.quote.input?.token,
           amount: apiQuote.quote.amountIn || apiQuote.quote.input?.amount,
           walletAddress: address,
-          chainId: 11155111,
+          chainId: activeChain.id,
         });
 
         if (approvalData.approval) {
@@ -46,7 +47,7 @@ export function useApiSwapExecution() {
             to: approveTx.to as `0x${string}`,
             data: approveTx.data as `0x${string}`,
             value: BigInt(approveTx.value || '0'),
-            chain: sepolia,
+            chain: walletClient.chain,
             account: address,
             kzg: undefined as any,
           });
@@ -97,7 +98,7 @@ export function useApiSwapExecution() {
           to: tx.to as `0x${string}`,
           data: tx.data as `0x${string}`,
           value: BigInt(tx.value || '0'),
-          chain: sepolia,
+          chain: walletClient.chain,
           account: address,
           ...(tx.gasLimit ? { gas: BigInt(tx.gasLimit) } : {}),
           kzg: undefined as any,

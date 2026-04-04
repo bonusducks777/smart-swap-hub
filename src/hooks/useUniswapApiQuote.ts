@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { parseUnits } from 'viem';
 import { useBackendMode } from '@/lib/backend-context';
+import { useChain } from '@/lib/chain-context';
 import { uniswapApiCall } from '@/lib/uniswap-api';
 import { isNativeETH } from '@/lib/contracts';
 import type { Token } from '@/lib/tokens';
 import type { RouteMode } from '@/hooks/useUniswapQuote';
 
-const SEPOLIA_CHAIN_ID = 11155111;
 const NATIVE_API_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 export interface ApiQuoteResult {
@@ -18,6 +18,7 @@ export interface ApiQuoteResult {
   quote: any;
   permitData: any | null;
   routeMode: RouteMode;
+  chainId: number;
 }
 
 function getApiTokenAddress(token: Token): string {
@@ -28,17 +29,12 @@ function getApiTokenAddress(token: Token): string {
 function getRoutingPreference(routeMode: RouteMode): Record<string, any> {
   switch (routeMode) {
     case 'cheapest':
-      // Solver auction — UniswapX Dutch orders for best execution
       return { protocols: ['DUTCH_V2'] };
     case 'fastest':
-      // Direct AMM — CLASSIC for immediate settlement
       return { protocols: ['V3', 'V2'] };
     case 'safe':
-      // MEV-protected — PRIORITY intent system
       return { protocols: ['PRIORITY'] };
     case 'crosschain':
-      // Global — let API find best route across all options
-      return {};
     default:
       return {};
   }
@@ -55,6 +51,7 @@ export function useUniswapApiQuote(
   const [error, setError] = useState<string | null>(null);
   const { apiKey } = useBackendMode();
   const { address } = useAccount();
+  const { activeChain } = useChain();
 
   useEffect(() => {
     const fetchQuote = async () => {
@@ -87,8 +84,8 @@ export function useUniswapApiQuote(
         const payload: Record<string, any> = {
           tokenIn: getApiTokenAddress(tokenIn),
           tokenOut: getApiTokenAddress(tokenOut),
-          tokenInChainId: SEPOLIA_CHAIN_ID,
-          tokenOutChainId: SEPOLIA_CHAIN_ID,
+          tokenInChainId: activeChain.id,
+          tokenOutChainId: activeChain.id,
           type: 'EXACT_INPUT',
           amount: parsedAmount,
           swapper: address,
@@ -110,6 +107,7 @@ export function useUniswapApiQuote(
           quote: data.quote,
           permitData: data.permitData || null,
           routeMode,
+          chainId: activeChain.id,
         });
         setError(null);
       } catch (err) {
@@ -123,7 +121,7 @@ export function useUniswapApiQuote(
 
     const timeout = setTimeout(fetchQuote, 500);
     return () => clearTimeout(timeout);
-  }, [apiKey, address, tokenIn.address, tokenOut.address, amountIn, tokenIn.decimals, tokenOut.decimals, routeMode]);
+  }, [apiKey, address, tokenIn.address, tokenOut.address, amountIn, tokenIn.decimals, tokenOut.decimals, routeMode, activeChain.id]);
 
   return { quote, isLoading, error };
 }

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { SEPOLIA_TOKENS, type Token } from '@/lib/tokens';
+import { type Token } from '@/lib/tokens';
 import { useBackendMode } from '@/lib/backend-context';
+import { useChain } from '@/lib/chain-context';
 import TokenSelector from '@/components/TokenSelector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,11 +34,20 @@ const STEP_LABELS: Record<string, string> = {
 const SwapTab = () => {
   const { isConnected } = useAccount();
   const { mode } = useBackendMode();
-  const [fromToken, setFromToken] = useState<Token>(SEPOLIA_TOKENS[0]);
-  const [toToken, setToToken] = useState<Token>(SEPOLIA_TOKENS[2]);
+  const { activeChain } = useChain();
+  const chainTokens = activeChain.tokens;
+  const [fromToken, setFromToken] = useState<Token>(chainTokens[0]);
+  const [toToken, setToToken] = useState<Token>(chainTokens.length > 2 ? chainTokens[2] : chainTokens[1] || chainTokens[0]);
   const [fromAmount, setFromAmount] = useState('');
   const [routeMode, setRouteMode] = useState<RouteMode>('cheapest');
   const [slippage, setSlippage] = useState('0.5');
+
+  // Reset tokens when chain changes
+  useEffect(() => {
+    setFromToken(chainTokens[0]);
+    setToToken(chainTokens.length > 2 ? chainTokens[2] : chainTokens[1] || chainTokens[0]);
+    setFromAmount('');
+  }, [activeChain.id]);
 
   // On-chain hooks (always called, React rules of hooks)
   const onchainQuote = useUniswapQuote(fromToken, toToken, mode === 'onchain' ? fromAmount : '', routeMode);
@@ -236,12 +246,12 @@ const SwapTab = () => {
             {swapError && <div className="text-xs mt-1 break-all">{swapError}</div>}
             {txHash && (
               <a
-                href={`https://sepolia.etherscan.io/tx/${txHash}`}
+                href={`${activeChain.explorerUrl}/tx/${txHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs underline mt-1 block"
               >
-                View on Etherscan →
+                View on Explorer →
               </a>
             )}
           </div>

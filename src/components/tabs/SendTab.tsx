@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { parseUnits, parseEther } from 'viem';
-import { sepolia } from 'viem/chains';
-import { SEPOLIA_TOKENS, CHAINS, type Token } from '@/lib/tokens';
+import { type Token } from '@/lib/tokens';
 import { ERC20_ABI, isNativeETH } from '@/lib/contracts';
 import { useBackendMode } from '@/lib/backend-context';
+import { useChain } from '@/lib/chain-context';
 import TokenSelector from '@/components/TokenSelector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,20 +28,28 @@ const SendTab = () => {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const { mode } = useBackendMode();
+  const { activeChain } = useChain();
   const { balances } = useTokenBalances();
+  const chainTokens = activeChain.tokens;
 
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
-  const [sendToken, setSendToken] = useState<Token>(SEPOLIA_TOKENS[0]);
-  const [recipientChain] = useState(CHAINS[0]);
+  const [sendToken, setSendToken] = useState<Token>(chainTokens[0]);
   const [step, setStep] = useState<'input' | 'confirm'>('input');
   const [txStatus, setTxStatus] = useState<TxStatus>('idle');
   const [txHash, setTxHash] = useState<string | null>(null);
   const [txError, setTxError] = useState<string | null>(null);
 
   // Swap-and-send state
-  const [swapFromToken, setSwapFromToken] = useState<Token>(SEPOLIA_TOKENS[0]);
+  const [swapFromToken, setSwapFromToken] = useState<Token>(chainTokens[0]);
   const [routeMode, setRouteMode] = useState<RouteMode>('fastest');
+
+  // Reset tokens when chain changes
+  useEffect(() => {
+    setSendToken(chainTokens[0]);
+    setSwapFromToken(chainTokens[0]);
+    setAmount('');
+  }, [activeChain.id]);
 
   const isValidAddress = /^0x[a-fA-F0-9]{40}$/.test(recipient);
   const senderBalance = balances.find(b => b.symbol === sendToken.symbol);
@@ -73,7 +81,7 @@ const SendTab = () => {
         hash = await walletClient.sendTransaction({
           to: recipient as `0x${string}`,
           value: parseEther(amount),
-          chain: sepolia,
+          chain: walletClient.chain,
           account: address,
           kzg: undefined as any,
         });
@@ -84,7 +92,7 @@ const SendTab = () => {
           abi: ERC20_ABI,
           functionName: 'transfer',
           args: [recipient as `0x${string}`, parsedAmount],
-          chain: sepolia,
+          chain: walletClient.chain,
           account: address,
         });
       }
@@ -136,7 +144,7 @@ const SendTab = () => {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Network</span>
-              <span className="text-foreground">{recipientChain.icon} Sepolia Testnet</span>
+              <span className="text-foreground">{activeChain.icon} {activeChain.name}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Type</span>
@@ -162,7 +170,7 @@ const SendTab = () => {
               </div>
               {txError && <div className="text-xs mt-1 break-all">{txError}</div>}
               {txHash && (
-                <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs underline mt-1 block">
+                <a href={`${activeChain.explorerUrl}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs underline mt-1 block">
                   View on Etherscan →
                 </a>
               )}
@@ -293,7 +301,7 @@ const SendTab = () => {
                 </div>
                 {activeSwap.error && <div className="text-xs mt-1 break-all">{activeSwap.error}</div>}
                 {activeSwap.txHash && (
-                  <a href={`https://sepolia.etherscan.io/tx/${activeSwap.txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs underline mt-1 block">
+                  <a href={`${activeChain.explorerUrl}/tx/${activeSwap.txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs underline mt-1 block">
                     View swap on Etherscan →
                   </a>
                 )}

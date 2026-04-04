@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { usePublicClient } from 'wagmi';
 import { parseUnits, formatUnits } from 'viem';
-import { QUOTER_V2_ABI, UNISWAP_ADDRESSES, FEE_TIERS, getSwapAddress } from '@/lib/contracts';
+import { QUOTER_V2_ABI, FEE_TIERS, getSwapAddress, getContractsForChain } from '@/lib/contracts';
+import { useChain } from '@/lib/chain-context';
 import type { Token } from '@/lib/tokens';
 
 export type RouteMode = 'cheapest' | 'fastest' | 'safe' | 'crosschain';
@@ -25,6 +26,7 @@ export function useUniswapQuote(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const publicClient = usePublicClient();
+  const { activeChain } = useChain();
 
   useEffect(() => {
     const fetchQuote = async () => {
@@ -34,18 +36,16 @@ export function useUniswapQuote(
         return;
       }
 
-      // Cross-chain is not available on testnet
       if (routeMode === 'crosschain') {
         setQuote(null);
-        setError('Cross-chain routing is not available on Sepolia testnet');
+        setError('Cross-chain routing requires API mode');
         setIsLoading(false);
         return;
       }
 
-      // UniswapX / Safe mode is not available on testnet
       if (routeMode === 'safe') {
         setQuote(null);
-        setError('UniswapX MEV protection is not available on Sepolia testnet');
+        setError('UniswapX MEV protection requires API mode');
         setIsLoading(false);
         return;
       }
@@ -61,20 +61,17 @@ export function useUniswapQuote(
 
       try {
         const parsedAmountIn = parseUnits(amountIn, tokenIn.decimals);
-        const inAddr = getSwapAddress(tokenIn.address);
-        const outAddr = getSwapAddress(tokenOut.address);
+        const inAddr = getSwapAddress(tokenIn.address, activeChain.id);
+        const outAddr = getSwapAddress(tokenOut.address, activeChain.id);
+        const contracts = getContractsForChain(activeChain.id);
 
-        // Route mode determines selection strategy
-        // Fastest: return first successful quote (skip remaining tiers)
-        // Cheapest: try all fee tiers, pick best output
         const feeTiersToTry = FEE_TIERS;
-
         let bestQuote: QuoteResult | null = null;
 
         for (const fee of feeTiersToTry) {
           try {
             const result = await publicClient.simulateContract({
-              address: UNISWAP_ADDRESSES.quoterV2,
+              address: contracts.quoterV2,
               abi: QUOTER_V2_ABI,
               functionName: 'quoteExactInputSingle',
               args: [
@@ -98,7 +95,6 @@ export function useUniswapQuote(
                 feeTier: fee,
                 routeMode,
               };
-              // Fastest: take first valid result immediately
               if (routeMode === 'fastest') break;
             }
           } catch {
@@ -111,11 +107,7 @@ export function useUniswapQuote(
           setError(null);
         } else {
           setQuote(null);
-          if (routeMode === 'fastest') {
-            setError('No 0.05% fee pool found for this pair. Try "Save Money" mode to search all pools.');
-          } else {
-            setError('No liquidity pool found for this pair on Sepolia');
-          }
+          setError(`No liquidity pool found for this pair on ${activeChain.name}`);
         }
       } catch (err) {
         setQuote(null);
@@ -126,9 +118,9 @@ export function useUniswapQuote(
       setIsLoading(false);
     };
 
-    const timeout = setTimeout(fetchQuote, 500); // debounce
+    const timeout = setTimeout(fetchQuote, 500);
     return () => clearTimeout(timeout);
-  }, [publicClient, tokenIn.address, tokenOut.address, amountIn, tokenIn.decimals, tokenOut.decimals, routeMode]);
+  }, [publicClient, tokenIn.address, tokenOut.address, amountIn, tokenIn.decimals, tokenOut.decimals, routeMode, activeChain.id]);
 
   return { quote, isLoading, error };
 }
