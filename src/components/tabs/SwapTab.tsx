@@ -80,11 +80,6 @@ const SwapTab = () => {
         ))}
       </div>
 
-      {routeMode === 'safe' && (
-        <div className="bg-info/10 border border-info/30 rounded-lg p-3 text-xs text-info">
-          🛡 UniswapX private order flow is not available on Sepolia. Swap will execute via standard routing, but the UI demonstrates the UX pattern.
-        </div>
-      )}
 
       {/* Swap Card */}
       <div className="glass rounded-xl p-4 space-y-3">
