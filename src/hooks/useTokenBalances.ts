@@ -1,7 +1,7 @@
-import { useAccount, useBalance } from 'wagmi';
-import { useReadContracts } from 'wagmi';
+import { useAccount, useBalance, usePublicClient } from 'wagmi';
+import { useState, useEffect } from 'react';
 import { SEPOLIA_TOKENS } from '@/lib/tokens';
-import { isNativeETH } from '@/lib/contracts';
+import { ERC20_ABI, isNativeETH } from '@/lib/contracts';
 
 export interface TokenBalance {
   symbol: string;
@@ -12,22 +12,48 @@ export interface TokenBalance {
 
 export function useTokenBalances() {
   const { address, isConnected } = useAccount();
-
-  // ETH balance
   const { data: ethBalance } = useBalance({ address });
+  const publicClient = usePublicClient();
+  const [erc20Data, setErc20Data] = useState<TokenBalance[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // ERC20 balances
-  const erc20Tokens = SEPOLIA_TOKENS.filter(t => !isNativeETH(t.address));
+  useEffect(() => {
+    if (!isConnected || !address || !publicClient) {
+      setErc20Data([]);
+      return;
+    }
 
-  const { data: erc20Balances, isLoading } = useReadContracts({
-    contracts: erc20Tokens.map(token => ({
-      address: token.address as `0x${string}`,
-      abi: ERC20_ABI,
-      functionName: 'balanceOf' as const,
-      args: [address!] as readonly [`0x${string}`],
-    })) as any,
-    query: { enabled: isConnected && !!address },
-  });
+    const fetchBalances = async () => {
+      setIsLoading(true);
+      const tokens = SEPOLIA_TOKENS.filter(t => !isNativeETH(t.address));
+      const results: TokenBalance[] = [];
+
+      for (const token of tokens) {
+        try {
+          const raw = await publicClient.readContract({
+            address: token.address as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: 'balanceOf',
+            args: [address],
+          }) as bigint;
+
+          results.push({
+            symbol: token.symbol,
+            balance: raw,
+            formatted: (Number(raw) / 10 ** token.decimals).toFixed(token.decimals > 6 ? 6 : 2),
+            decimals: token.decimals,
+          });
+        } catch {
+          results.push({ symbol: token.symbol, balance: 0n, formatted: '0', decimals: token.decimals });
+        }
+      }
+
+      setErc20Data(results);
+      setIsLoading(false);
+    };
+
+    fetchBalances();
+  }, [isConnected, address, publicClient]);
 
   const balances: TokenBalance[] = [];
 
@@ -40,21 +66,7 @@ export function useTokenBalances() {
     });
   }
 
-  if (erc20Balances) {
-    erc20Tokens.forEach((token, i) => {
-      const result = erc20Balances[i];
-      if (result?.status === 'success' && result.result != null) {
-        const raw = BigInt(result.result.toString());
-        const formatted = (Number(raw) / 10 ** token.decimals).toFixed(token.decimals > 6 ? 6 : 2);
-        balances.push({
-          symbol: token.symbol,
-          balance: raw,
-          formatted,
-          decimals: token.decimals,
-        });
-      }
-    });
-  }
+  balances.push(...erc20Data);
 
   return { balances, isLoading, isConnected };
 }
