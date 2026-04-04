@@ -12,10 +12,10 @@ import { useApiSwapExecution } from '@/hooks/useApiSwapExecution';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 
 const ROUTE_MODES: { id: RouteMode; icon: string; label: string; desc: string }[] = [
-  { id: 'cheapest', icon: '💸', label: 'Save Money', desc: 'Best price, may take longer' },
-  { id: 'fastest', icon: '⚡', label: 'Instant', desc: 'Fastest execution' },
-  { id: 'safe', icon: '🛡', label: 'Safe', desc: 'MEV protected (UniswapX)' },
-  { id: 'crosschain', icon: '🌐', label: 'Cross-Chain', desc: 'Bridge + swap' },
+  { id: 'cheapest', icon: '💸', label: 'Save Money', desc: 'Solver auction, best price' },
+  { id: 'fastest', icon: '⚡', label: 'Instant', desc: 'Direct AMM, immediate' },
+  { id: 'safe', icon: '🛡', label: 'Protected', desc: 'MEV-shielded execution' },
+  { id: 'crosschain', icon: '🌉', label: 'Global', desc: 'Cross-chain best price' },
 ];
 
 const STEP_LABELS: Record<string, string> = {
