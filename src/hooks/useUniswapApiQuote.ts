@@ -29,8 +29,6 @@ function getRoutingPreference(routeMode: RouteMode): Record<string, any> {
   switch (routeMode) {
     case 'payment':
       return { protocols: ['V3', 'V2'] };
-    case 'protected':
-      return { protocols: ['UNISWAPX_V3'] };
     case 'auto':
     default:
       return { protocols: ['V3', 'V2', 'UNISWAPX_V3'] };
