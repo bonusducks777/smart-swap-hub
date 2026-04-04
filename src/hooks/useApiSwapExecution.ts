@@ -14,6 +14,7 @@ export function useApiSwapExecution() {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const { apiKey } = useBackendMode();
+  const { activeChain } = useChain();
   const [step, setStep] = useState<ApiSwapStep>('idle');
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
