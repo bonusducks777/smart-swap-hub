@@ -17,6 +17,7 @@ type TxStatus = 'idle' | 'sending' | 'confirming' | 'done' | 'error';
 const ROUTE_MODES: { id: RouteMode; icon: string; label: string; desc: string }[] = [
   { id: 'auto', icon: '🌐', label: 'Auto', desc: 'Best route' },
   { id: 'payment', icon: '⚡', label: 'Payment', desc: 'Deterministic' },
+  { id: 'protected', icon: '🛡', label: 'Protected', desc: 'MEV-shielded' },
 ];
 
 const SendTab = () => {
