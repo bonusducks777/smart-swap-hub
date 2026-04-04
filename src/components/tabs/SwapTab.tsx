@@ -93,20 +93,42 @@ const SwapTab = () => {
 
       {/* Route Mode Selector */}
       <div className="grid grid-cols-4 gap-2">
-        {ROUTE_MODES.map(mode => (
+        {ROUTE_MODES.map(rm => (
           <button
-            key={mode.id}
-            onClick={() => { setRouteMode(mode.id); handleReset(); }}
+            key={rm.id}
+            onClick={() => { setRouteMode(rm.id); handleReset(); }}
             className={`glass rounded-lg p-3 text-center transition-all ${
-              routeMode === mode.id ? 'border-primary/60 glow-primary' : 'hover:border-primary/30'
+              routeMode === rm.id ? 'border-primary/60 glow-primary' : 'hover:border-primary/30'
             }`}
           >
-            <div className="text-xl mb-1">{mode.icon}</div>
-            <div className="text-xs font-semibold text-foreground">{mode.label}</div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">{mode.desc}</div>
+            <div className="text-xl mb-1">{rm.icon}</div>
+            <div className="text-xs font-semibold text-foreground">{rm.label}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">{rm.desc}</div>
           </button>
         ))}
       </div>
+
+      {/* Active Mode Explanation */}
+      {(() => {
+        const active = ROUTE_MODES.find(rm => rm.id === routeMode)!;
+        const explanations: Record<RouteMode, { routing: string; detail: string }> = {
+          cheapest: { routing: 'DUTCH_V2 / DUTCH_V3', detail: 'Solver competition (UniswapX) — may wait a few seconds to get you a better price' },
+          fastest: { routing: 'CLASSIC (V3/V2)', detail: 'Direct AMM execution — immediate settlement at current market rate' },
+          safe: { routing: 'PRIORITY (UniswapX)', detail: 'Order hidden from public mempool — solvers fill privately, reducing sandwich attacks' },
+          crosschain: { routing: 'BRIDGE + CLASSIC + DUTCH', detail: 'Routes may cross chains for global best price — liquidity is not chain-local' },
+        };
+        const info = explanations[routeMode];
+        return (
+          <div className="glass rounded-lg px-4 py-3 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{active.icon}</span>
+              <span className="text-sm font-semibold text-foreground">{active.label} Mode</span>
+              <span className="text-[10px] font-mono bg-secondary px-2 py-0.5 rounded text-muted-foreground">{info.routing}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{info.detail}</p>
+          </div>
+        );
+      })()}
 
       {/* Swap Card */}
       <div className="glass rounded-xl p-4 space-y-3">
