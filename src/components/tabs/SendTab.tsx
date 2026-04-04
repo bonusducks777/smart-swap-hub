@@ -50,7 +50,6 @@ const SendTab = () => {
     setSwapFromToken(chainTokens[0]);
     setAmount('');
   }, [activeChain.id]);
-  const [routeMode, setRouteMode] = useState<RouteMode>('fastest');
 
   const isValidAddress = /^0x[a-fA-F0-9]{40}$/.test(recipient);
   const senderBalance = balances.find(b => b.symbol === sendToken.symbol);
