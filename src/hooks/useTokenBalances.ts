@@ -1,6 +1,7 @@
-import { useAccount, useBalance, useReadContracts } from 'wagmi';
+import { useAccount, useBalance } from 'wagmi';
+import { useReadContracts } from 'wagmi';
 import { SEPOLIA_TOKENS } from '@/lib/tokens';
-import { ERC20_ABI, isNativeETH } from '@/lib/contracts';
+import { isNativeETH } from '@/lib/contracts';
 
 export interface TokenBalance {
   symbol: string;
