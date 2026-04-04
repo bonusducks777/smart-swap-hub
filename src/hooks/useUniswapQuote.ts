@@ -64,15 +64,10 @@ export function useUniswapQuote(
         const inAddr = getSwapAddress(tokenIn.address);
         const outAddr = getSwapAddress(tokenOut.address);
 
-        // Route mode determines which fee tiers to try and selection strategy
-        let feeTiersToTry: readonly number[];
-        if (routeMode === 'fastest') {
-          // Fastest: only try the lowest fee tier (500 = 0.05%) — most liquid, fastest execution
-          feeTiersToTry = [500];
-        } else {
-          // Cheapest: try all fee tiers, pick best output
-          feeTiersToTry = FEE_TIERS;
-        }
+        // Route mode determines selection strategy
+        // Fastest: return first successful quote (skip remaining tiers)
+        // Cheapest: try all fee tiers, pick best output
+        const feeTiersToTry = FEE_TIERS;
 
         let bestQuote: QuoteResult | null = null;
 
