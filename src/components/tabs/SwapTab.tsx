@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { SEPOLIA_TOKENS, type Token } from '@/lib/tokens';
+import { type Token } from '@/lib/tokens';
 import { useBackendMode } from '@/lib/backend-context';
+import { useChain } from '@/lib/chain-context';
 import TokenSelector from '@/components/TokenSelector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
