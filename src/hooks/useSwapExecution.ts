@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { parseUnits, maxUint256 } from 'viem';
+import { sepolia } from 'viem/chains';
 import {
   UNISWAP_ADDRESSES,
   SWAP_ROUTER_ABI,
@@ -43,11 +44,9 @@ export function useSwapExecution() {
       const outAddr = getSwapAddress(tokenOut.address);
       const isETHIn = isNativeETH(tokenIn.address);
 
-      // Apply slippage to minimum output
       const slippageMultiplier = BigInt(Math.floor((1 - slippagePct / 100) * 10000));
       const minOut = (amountOutMin * slippageMultiplier) / 10000n;
 
-      // Step 1: Check and set allowance for ERC20 tokens
       if (!isETHIn) {
         setStep('checking-allowance');
 
@@ -66,13 +65,14 @@ export function useSwapExecution() {
             abi: ERC20_ABI,
             functionName: 'approve',
             args: [UNISWAP_ADDRESSES.swapRouter02, maxUint256],
+            chain: sepolia,
+            account: address,
           });
 
           await publicClient.waitForTransactionReceipt({ hash: approveHash });
         }
       }
 
-      // Step 2: Execute swap
       setStep('swapping');
 
       const swapHash = await walletClient.writeContract({
@@ -91,16 +91,16 @@ export function useSwapExecution() {
           },
         ],
         value: isETHIn ? parsedAmountIn : 0n,
+        chain: sepolia,
+        account: address,
       });
 
       setTxHash(swapHash);
-
       await publicClient.waitForTransactionReceipt({ hash: swapHash });
       setStep('done');
     } catch (err: unknown) {
       setStep('error');
       const msg = err instanceof Error ? err.message : 'Swap failed';
-      // Clean up common viem error messages
       if (msg.includes('User rejected')) {
         setError('Transaction rejected by user');
       } else if (msg.includes('insufficient funds')) {
