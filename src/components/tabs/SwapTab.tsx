@@ -34,7 +34,7 @@ const SwapTab = () => {
   const [routeMode, setRouteMode] = useState<RouteMode>('cheapest');
   const [slippage, setSlippage] = useState('0.5');
 
-  const { quote, isLoading: quoteLoading, error: quoteError } = useUniswapQuote(fromToken, toToken, fromAmount);
+  const { quote, isLoading: quoteLoading, error: quoteError } = useUniswapQuote(fromToken, toToken, fromAmount, routeMode);
   const { executeSwap, step, txHash, error: swapError, reset } = useSwapExecution();
   const { balances } = useTokenBalances();
 
