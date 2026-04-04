@@ -1,11 +1,20 @@
-// Uniswap V3 Sepolia contract addresses and ABIs
+// Uniswap V3 contract ABIs (chain-agnostic)
+// Addresses are now per-chain in tokens.ts
 
-export const UNISWAP_ADDRESSES = {
-  swapRouter02: '0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E' as const,
-  quoterV2: '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3' as const,
-  factory: '0x0227628f3F023bb0B980b67D528571c95c6DaC1d' as const,
-  WETH: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14' as const,
-};
+import { getChainConfig } from '@/lib/tokens';
+
+// Get contract addresses for a specific chain
+export function getContractsForChain(chainId: number) {
+  const chain = getChainConfig(chainId);
+  return {
+    swapRouter02: chain.contracts.swapRouter02 as `0x${string}`,
+    quoterV2: chain.contracts.quoterV2 as `0x${string}`,
+    WETH: chain.contracts.WETH as `0x${string}`,
+  };
+}
+
+// Legacy static addresses (Sepolia) - kept for backward compat
+export const UNISWAP_ADDRESSES = getContractsForChain(11155111);
 
 // Minimal ABIs for the contracts we interact with
 export const QUOTER_V2_ABI = [
@@ -114,7 +123,7 @@ export const ERC20_ABI = [
 ] as const;
 
 // Fee tiers available on Uniswap V3
-export const FEE_TIERS = [500, 3000, 10000] as const;
+export const FEE_TIERS = [100, 500, 3000, 10000] as const;
 export type FeeTier = typeof FEE_TIERS[number];
 
 // Native ETH pseudo-address
@@ -125,7 +134,7 @@ export function isNativeETH(address: string): boolean {
 }
 
 // Get the actual token address for contract calls (WETH for native ETH)
-export function getSwapAddress(tokenAddress: string): `0x${string}` {
-  if (isNativeETH(tokenAddress)) return UNISWAP_ADDRESSES.WETH;
+export function getSwapAddress(tokenAddress: string, chainId: number = 11155111): `0x${string}` {
+  if (isNativeETH(tokenAddress)) return getContractsForChain(chainId).WETH;
   return tokenAddress as `0x${string}`;
 }
