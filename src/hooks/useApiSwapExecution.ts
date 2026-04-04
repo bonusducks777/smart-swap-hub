@@ -47,7 +47,7 @@ export function useApiSwapExecution() {
             to: approveTx.to as `0x${string}`,
             data: approveTx.data as `0x${string}`,
             value: BigInt(approveTx.value || '0'),
-            chain: sepolia,
+            chain: walletClient.chain,
             account: address,
             kzg: undefined as any,
           });
