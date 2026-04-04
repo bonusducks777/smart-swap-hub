@@ -87,6 +87,7 @@ export function useUniswapApiQuote(
           amount: parsedAmount,
           swapper: address,
           slippageTolerance: 0.5,
+          ...(recipient ? { recipient } : {}),
         };
 
         const preferredPayload = {
