@@ -81,7 +81,7 @@ const SendTab = () => {
         hash = await walletClient.sendTransaction({
           to: recipient as `0x${string}`,
           value: parseEther(amount),
-          chain: sepolia,
+          chain: walletClient.chain,
           account: address,
           kzg: undefined as any,
         });
