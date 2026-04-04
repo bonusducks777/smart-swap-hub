@@ -36,8 +36,15 @@ function getRoutingPreference(routeMode: RouteMode): Record<string, any> {
       return { protocols: ['UNISWAPX_V3'] };
     case 'crosschain':
     default:
-      return { protocols: ['V3', 'V2', 'V4', 'UNISWAPX_V3'] };
+      return { protocols: ['V3', 'V2', 'UNISWAPX_V3'] };
   }
+}
+
+function shouldRetryWithoutProtocols(routeMode: RouteMode, message: string): boolean {
+  if (routeMode === 'fastest') return false;
+
+  const normalized = message.toLowerCase();
+  return normalized.includes('invalid value') || normalized.includes('requestvalidationerror');
 }
 
 export function useUniswapApiQuote(
@@ -80,8 +87,7 @@ export function useUniswapApiQuote(
 
       try {
         const parsedAmount = parseUnits(amountIn, tokenIn.decimals).toString();
-
-        const payload: Record<string, any> = {
+        const basePayload: Record<string, any> = {
           tokenIn: getApiTokenAddress(tokenIn),
           tokenOut: getApiTokenAddress(tokenOut),
           tokenInChainId: activeChain.id,
@@ -90,10 +96,26 @@ export function useUniswapApiQuote(
           amount: parsedAmount,
           swapper: address,
           slippageTolerance: 0.5,
+        };
+
+        const preferredPayload = {
+          ...basePayload,
           ...getRoutingPreference(routeMode),
         };
 
-        const { data } = await uniswapApiCall('quote', apiKey, payload);
+        let data: any;
+
+        try {
+          ({ data } = await uniswapApiCall('quote', apiKey, preferredPayload));
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'API quote failed';
+
+          if (!shouldRetryWithoutProtocols(routeMode, msg)) {
+            throw err;
+          }
+
+          ({ data } = await uniswapApiCall('quote', apiKey, basePayload));
+        }
 
         const rawAmountOut = BigInt(data.quote?.output?.amount || data.quote?.amountOut || data.quote?.amount || '0');
         const formattedOut = (Number(rawAmountOut) / 10 ** tokenOut.decimals).toFixed(tokenOut.decimals);
