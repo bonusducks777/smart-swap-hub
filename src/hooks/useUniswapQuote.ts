@@ -98,6 +98,8 @@ export function useUniswapQuote(
                 feeTier: fee,
                 routeMode,
               };
+              // Fastest: take first valid result immediately
+              if (routeMode === 'fastest') break;
             }
           } catch {
             // This fee tier doesn't have a pool, try next
