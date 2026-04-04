@@ -41,6 +41,7 @@ export function useUniswapApiQuote(
   amountIn: string,
   routeMode: RouteMode = 'auto',
   apiKey?: string,
+  recipient?: string,
 ) {
   const [quote, setQuote] = useState<ApiQuoteResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
