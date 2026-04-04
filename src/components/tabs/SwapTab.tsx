@@ -1,26 +1,30 @@
 import { useState } from 'react';
 import { useAccount } from 'wagmi';
 import { SEPOLIA_TOKENS, type Token } from '@/lib/tokens';
+import { useBackendMode } from '@/lib/backend-context';
 import TokenSelector from '@/components/TokenSelector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useUniswapQuote, type RouteMode } from '@/hooks/useUniswapQuote';
+import { useUniswapApiQuote } from '@/hooks/useUniswapApiQuote';
 import { useSwapExecution } from '@/hooks/useSwapExecution';
+import { useApiSwapExecution } from '@/hooks/useApiSwapExecution';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
-
-// RouteMode type is imported from useUniswapQuote
 
 const ROUTE_MODES: { id: RouteMode; icon: string; label: string; desc: string }[] = [
   { id: 'cheapest', icon: '💸', label: 'Save Money', desc: 'Best price, may take longer' },
   { id: 'fastest', icon: '⚡', label: 'Instant', desc: 'Fastest execution' },
   { id: 'safe', icon: '🛡', label: 'Safe', desc: 'MEV protected (UniswapX)' },
-  { id: 'crosschain', icon: '🌐', label: 'Cross-Chain', desc: 'Not available on testnet' },
+  { id: 'crosschain', icon: '🌐', label: 'Cross-Chain', desc: 'Bridge + swap' },
 ];
 
 const STEP_LABELS: Record<string, string> = {
   'idle': '',
   'checking-allowance': 'Checking token allowance…',
+  'checking-approval': 'Checking approval via API…',
   'approving': 'Approve token in MetaMask…',
+  'signing-permit': 'Sign Permit2 in MetaMask…',
+  'building-swap': 'Building swap transaction…',
   'swapping': 'Confirm swap in MetaMask…',
   'done': 'Swap complete! ✓',
   'error': 'Swap failed',
@@ -28,47 +32,71 @@ const STEP_LABELS: Record<string, string> = {
 
 const SwapTab = () => {
   const { isConnected } = useAccount();
+  const { mode } = useBackendMode();
   const [fromToken, setFromToken] = useState<Token>(SEPOLIA_TOKENS[0]);
   const [toToken, setToToken] = useState<Token>(SEPOLIA_TOKENS[2]);
   const [fromAmount, setFromAmount] = useState('');
   const [routeMode, setRouteMode] = useState<RouteMode>('cheapest');
   const [slippage, setSlippage] = useState('0.5');
 
-  const { quote, isLoading: quoteLoading, error: quoteError } = useUniswapQuote(fromToken, toToken, fromAmount, routeMode);
-  const { executeSwap, step, txHash, error: swapError, reset } = useSwapExecution();
-  const { balances } = useTokenBalances();
+  // On-chain hooks (always called, React rules of hooks)
+  const onchainQuote = useUniswapQuote(fromToken, toToken, mode === 'onchain' ? fromAmount : '', routeMode);
+  const onchainSwap = useSwapExecution();
 
+  // API hooks (always called)
+  const apiQuote = useUniswapApiQuote(fromToken, toToken, mode === 'api' ? fromAmount : '', routeMode);
+  const apiSwap = useApiSwapExecution();
+
+  // Select active backend
+  const { quote, isLoading: quoteLoading, error: quoteError } = mode === 'onchain' ? onchainQuote : apiQuote;
+  const { step, txHash, error: swapError, reset } = mode === 'onchain' ? onchainSwap : apiSwap;
+
+  const { balances } = useTokenBalances();
   const fromBalance = balances.find(b => b.symbol === fromToken.symbol);
 
   const handleSwap = () => {
     if (!quote) return;
-    executeSwap(
-      fromToken,
-      toToken,
-      fromAmount,
-      quote.amountOut,
-      quote.feeTier,
-      parseFloat(slippage),
-    );
-  };
-
-  const handleMaxClick = () => {
-    if (fromBalance) {
-      setFromAmount(fromBalance.formatted);
+    if (mode === 'onchain') {
+      const q = quote as { amountOut: bigint; feeTier: number };
+      onchainSwap.executeSwap(fromToken, toToken, fromAmount, q.amountOut, q.feeTier, parseFloat(slippage));
+    } else {
+      const q = quote as import('@/hooks/useUniswapApiQuote').ApiQuoteResult;
+      apiSwap.executeSwap(q);
     }
   };
 
-  const feeTierLabel = quote ? `${quote.feeTier / 10000}%` : '—';
+  const handleReset = () => {
+    if (mode === 'onchain') onchainSwap.reset();
+    else apiSwap.reset();
+  };
+
+  const handleMaxClick = () => {
+    if (fromBalance) setFromAmount(fromBalance.formatted);
+  };
+
+  const feeTierLabel = mode === 'onchain' && quote && 'feeTier' in quote
+    ? `${(quote as any).feeTier / 10000}%`
+    : mode === 'api' && quote && 'routing' in quote
+    ? (quote as any).routing
+    : '—';
+
   const gasEstLabel = quote ? `~${Number(quote.gasEstimate).toLocaleString()} gas` : '—';
 
   return (
     <div className="max-w-lg mx-auto space-y-4 animate-slide-up">
+      {/* Backend indicator */}
+      <div className={`text-center text-[10px] font-medium px-2 py-1 rounded-full w-fit mx-auto ${
+        mode === 'api' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+      }`}>
+        {mode === 'onchain' ? '⛓ QuoterV2 On-Chain' : '🌐 Uniswap Trading API'}
+      </div>
+
       {/* Route Mode Selector */}
       <div className="grid grid-cols-4 gap-2">
         {ROUTE_MODES.map(mode => (
           <button
             key={mode.id}
-            onClick={() => setRouteMode(mode.id)}
+            onClick={() => { setRouteMode(mode.id); handleReset(); }}
             className={`glass rounded-lg p-3 text-center transition-all ${
               routeMode === mode.id ? 'border-primary/60 glow-primary' : 'hover:border-primary/30'
             }`}
@@ -79,7 +107,6 @@ const SwapTab = () => {
           </button>
         ))}
       </div>
-
 
       {/* Swap Card */}
       <div className="glass rounded-xl p-4 space-y-3">
@@ -98,17 +125,17 @@ const SwapTab = () => {
               type="number"
               placeholder="0.0"
               value={fromAmount}
-              onChange={e => { setFromAmount(e.target.value); reset(); }}
+              onChange={e => { setFromAmount(e.target.value); handleReset(); }}
               className="border-0 bg-transparent text-2xl font-semibold text-foreground p-0 h-auto focus-visible:ring-0"
             />
-            <TokenSelector selected={fromToken} onSelect={t => { setFromToken(t); reset(); }} exclude={toToken.symbol} />
+            <TokenSelector selected={fromToken} onSelect={t => { setFromToken(t); handleReset(); }} exclude={toToken.symbol} />
           </div>
         </div>
 
         {/* Arrow */}
         <div className="flex justify-center">
           <button
-            onClick={() => { setFromToken(toToken); setToToken(fromToken); reset(); }}
+            onClick={() => { setFromToken(toToken); setToToken(fromToken); handleReset(); }}
             className="glass rounded-full p-2 hover:border-primary/50 transition-colors"
           >
             ↕️
@@ -130,15 +157,15 @@ const SwapTab = () => {
                 '0.00'
               )}
             </div>
-            <TokenSelector selected={toToken} onSelect={t => { setToToken(t); reset(); }} exclude={fromToken.symbol} />
+            <TokenSelector selected={toToken} onSelect={t => { setToToken(t); handleReset(); }} exclude={fromToken.symbol} />
           </div>
         </div>
 
-        {/* Route Info — real data */}
+        {/* Route Info */}
         {quote && (
           <div className="bg-secondary/50 rounded-lg p-3 space-y-2 text-xs animate-slide-up">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Pool Fee Tier</span>
+              <span className="text-muted-foreground">{mode === 'onchain' ? 'Pool Fee Tier' : 'Routing'}</span>
               <span className="text-foreground font-mono">{feeTierLabel}</span>
             </div>
             <div className="flex justify-between">
@@ -152,9 +179,9 @@ const SwapTab = () => {
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Route</span>
+              <span className="text-muted-foreground">Backend</span>
               <span className="text-foreground">
-                {fromToken.symbol} → {toToken.symbol} (Uniswap V3)
+                {mode === 'onchain' ? 'QuoterV2 → SwapRouter02' : `Uniswap API (${(quote as any).routing || 'CLASSIC'})`}
               </span>
             </div>
           </div>
@@ -183,7 +210,7 @@ const SwapTab = () => {
             step === 'error' ? 'bg-destructive/10 text-destructive' :
             'bg-info/10 text-info'
           }`}>
-            <div className="font-medium">{STEP_LABELS[step]}</div>
+            <div className="font-medium">{STEP_LABELS[step] || step}</div>
             {swapError && <div className="text-xs mt-1 break-all">{swapError}</div>}
             {txHash && (
               <a
@@ -202,7 +229,7 @@ const SwapTab = () => {
         <Button
           className="w-full h-12 text-base font-semibold"
           style={{ background: isConnected && quote ? 'var(--gradient-primary)' : undefined }}
-          disabled={!isConnected || !quote || step === 'swapping' || step === 'approving' || step === 'checking-allowance'}
+          disabled={!isConnected || !quote || ['swapping', 'approving', 'checking-allowance', 'checking-approval', 'signing-permit', 'building-swap'].includes(step)}
           onClick={handleSwap}
         >
           {!isConnected
@@ -212,11 +239,15 @@ const SwapTab = () => {
             : quoteLoading
             ? 'Fetching Quote…'
             : quoteError
-            ? 'No Pool Available'
+            ? 'No Quote Available'
             : step === 'approving'
             ? 'Approving…'
             : step === 'swapping'
             ? 'Swapping…'
+            : step === 'signing-permit'
+            ? 'Signing Permit…'
+            : step === 'building-swap'
+            ? 'Building Tx…'
             : step === 'done'
             ? 'Swap Again'
             : `Swap ${fromToken.symbol} → ${toToken.symbol}`}
