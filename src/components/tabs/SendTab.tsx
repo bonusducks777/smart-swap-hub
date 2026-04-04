@@ -28,19 +28,28 @@ const SendTab = () => {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const { mode } = useBackendMode();
+  const { activeChain } = useChain();
   const { balances } = useTokenBalances();
+  const chainTokens = activeChain.tokens;
 
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
-  const [sendToken, setSendToken] = useState<Token>(SEPOLIA_TOKENS[0]);
-  const [recipientChain] = useState(CHAINS[0]);
+  const [sendToken, setSendToken] = useState<Token>(chainTokens[0]);
   const [step, setStep] = useState<'input' | 'confirm'>('input');
   const [txStatus, setTxStatus] = useState<TxStatus>('idle');
   const [txHash, setTxHash] = useState<string | null>(null);
   const [txError, setTxError] = useState<string | null>(null);
 
   // Swap-and-send state
-  const [swapFromToken, setSwapFromToken] = useState<Token>(SEPOLIA_TOKENS[0]);
+  const [swapFromToken, setSwapFromToken] = useState<Token>(chainTokens[0]);
+  const [routeMode, setRouteMode] = useState<RouteMode>('fastest');
+
+  // Reset tokens when chain changes
+  useEffect(() => {
+    setSendToken(chainTokens[0]);
+    setSwapFromToken(chainTokens[0]);
+    setAmount('');
+  }, [activeChain.id]);
   const [routeMode, setRouteMode] = useState<RouteMode>('fastest');
 
   const isValidAddress = /^0x[a-fA-F0-9]{40}$/.test(recipient);
