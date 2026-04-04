@@ -37,7 +37,7 @@ export function useApiSwapExecution() {
           token: apiQuote.quote.tokenIn || apiQuote.quote.input?.token,
           amount: apiQuote.quote.amountIn || apiQuote.quote.input?.amount,
           walletAddress: address,
-          chainId: 11155111,
+          chainId: activeChain.id,
         });
 
         if (approvalData.approval) {
