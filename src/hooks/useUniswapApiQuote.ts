@@ -27,12 +27,10 @@ function getApiTokenAddress(token: Token): string {
 
 function getRoutingPreference(routeMode: RouteMode): Record<string, any> {
   switch (routeMode) {
-    case 'fastest':
-      return { protocols: ['V3'] };
     case 'safe':
-      return { protocols: ['UNISWAPX_V2', 'UNISWAPX_V3'] };
+      return { protocols: ['UNISWAPX_V2'] };
+    case 'fastest':
     case 'crosschain':
-      return {};
     case 'cheapest':
     default:
       return {};
