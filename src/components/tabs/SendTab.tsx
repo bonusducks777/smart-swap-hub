@@ -17,7 +17,6 @@ type TxStatus = 'idle' | 'sending' | 'confirming' | 'done' | 'error';
 const ROUTE_MODES: { id: RouteMode; icon: string; label: string; desc: string }[] = [
   { id: 'auto', icon: '🌐', label: 'Auto', desc: 'Best route' },
   { id: 'payment', icon: '⚡', label: 'Payment', desc: 'Deterministic' },
-  { id: 'protected', icon: '🛡', label: 'Protected', desc: 'MEV-shielded' },
 ];
 
 const SendTab = () => {
@@ -275,7 +274,7 @@ const SendTab = () => {
             </div>
 
             {/* Route mode */}
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-1.5">
               {ROUTE_MODES.map(rm => (
                 <button
                   key={rm.id}
