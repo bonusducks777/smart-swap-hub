@@ -43,10 +43,11 @@ function getRoutingPreference(routeMode: RouteMode): Record<string, any> {
 export function useUniswapApiQuote(
   tokenIn: Token,
   tokenOut: Token,
-  amountIn: string,
+  amount: string,
   routeMode: RouteMode = 'auto',
   apiKey?: string,
   recipient?: string,
+  quoteType: QuoteType = 'EXACT_INPUT',
 ) {
   const [quote, setQuote] = useState<ApiQuoteResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,12 +55,11 @@ export function useUniswapApiQuote(
   const { address } = useAccount();
   const { activeChain } = useChain();
 
-  // Get API key from param or localStorage
   const resolvedApiKey = apiKey || localStorage.getItem('uniswap_api_key') || '';
 
   useEffect(() => {
     const fetchQuote = async () => {
-      if (!amountIn || parseFloat(amountIn) <= 0) {
+      if (!amount || parseFloat(amount) <= 0) {
         setQuote(null);
         setError(null);
         return;
@@ -83,13 +83,14 @@ export function useUniswapApiQuote(
       setError(null);
 
       try {
-        const parsedAmount = parseUnits(amountIn, tokenIn.decimals).toString();
+        const amountToken = quoteType === 'EXACT_INPUT' ? tokenIn : tokenOut;
+        const parsedAmount = parseUnits(amount, amountToken.decimals).toString();
         const basePayload: Record<string, any> = {
           tokenIn: getApiTokenAddress(tokenIn),
           tokenOut: getApiTokenAddress(tokenOut),
           tokenInChainId: activeChain.id,
           tokenOutChainId: activeChain.id,
-          type: 'EXACT_INPUT',
+          type: quoteType,
           amount: parsedAmount,
           swapper: address,
           slippageTolerance: 0.5,
@@ -109,7 +110,6 @@ export function useUniswapApiQuote(
           const msg = err instanceof Error ? err.message : 'API quote failed';
           const normalized = msg.toLowerCase();
 
-          // If forced protocols fail (e.g. UNISWAPX_V3 not available), retry without
           if (routeMode !== 'payment' && (normalized.includes('invalid value') || normalized.includes('requestvalidationerror'))) {
             ({ data } = await uniswapApiCall('quote', resolvedApiKey, basePayload));
           } else {
@@ -117,19 +117,24 @@ export function useUniswapApiQuote(
           }
         }
 
-        const rawAmountOut = BigInt(data.quote?.output?.amount || data.quote?.amountOut || data.quote?.amount || '0');
-        const formattedOut = (Number(rawAmountOut) / 10 ** tokenOut.decimals).toFixed(tokenOut.decimals);
+        const rawAmountOut = BigInt(data.quote?.output?.amount || data.quote?.amountOut || '0');
+        const formattedOut = (Number(rawAmountOut) / 10 ** tokenOut.decimals).toFixed(tokenOut.decimals > 6 ? 6 : tokenOut.decimals);
+        const rawAmountIn = BigInt(data.quote?.input?.amount || data.quote?.amountIn || '0');
+        const formattedIn = (Number(rawAmountIn) / 10 ** tokenIn.decimals).toFixed(tokenIn.decimals > 6 ? 6 : 6);
         const gasEstimate = BigInt(data.quote?.gasUseEstimate || data.quote?.gasEstimate || '0');
 
         setQuote({
           amountOut: rawAmountOut,
           formattedOut,
+          amountIn: rawAmountIn,
+          formattedIn,
           gasEstimate,
           routing: data.routing || 'CLASSIC',
           quote: data.quote,
           permitData: data.permitData || null,
           routeMode,
           chainId: activeChain.id,
+          quoteType,
         });
         setError(null);
       } catch (err) {
@@ -143,7 +148,7 @@ export function useUniswapApiQuote(
 
     const timeout = setTimeout(fetchQuote, 500);
     return () => clearTimeout(timeout);
-  }, [resolvedApiKey, address, tokenIn.address, tokenOut.address, amountIn, tokenIn.decimals, tokenOut.decimals, routeMode, activeChain.id, recipient]);
+  }, [resolvedApiKey, address, tokenIn.address, tokenOut.address, amount, tokenIn.decimals, tokenOut.decimals, routeMode, activeChain.id, recipient, quoteType]);
 
   return { quote, isLoading, error };
 }
