@@ -50,11 +50,19 @@ const SendTab = () => {
   const hasBalance = senderBalance && parseFloat(senderBalance.formatted) > 0;
   const needsSwap = !hasBalance && amount && parseFloat(amount) > 0;
 
-  // Swap quote & execution
-  const apiQuote = useUniswapApiQuote(swapFromToken, sendToken, needsSwap ? amount : '', routeMode);
+  // When swapping, pass recipient so tokens go directly to them
+  const validRecipient = isValidAddress ? recipient : undefined;
+  const apiQuote = useUniswapApiQuote(
+    swapFromToken, sendToken, needsSwap ? amount : '', routeMode,
+    undefined, validRecipient,
+  );
   const apiSwap = useApiSwapExecution();
 
   const swapFromBalance = balances.find(b => b.symbol === swapFromToken.symbol);
+
+  // Gas info from quote
+  const gasUsd = apiQuote.quote?.quote?.gasFeeUSD ? `$${parseFloat(apiQuote.quote.quote.gasFeeUSD).toFixed(4)}` : null;
+  const gasEstLabel = apiQuote.quote ? `~${Number(apiQuote.quote.gasEstimate).toLocaleString()} gas${gasUsd ? ` (${gasUsd})` : ''}` : null;
 
   const executeSend = async () => {
     if (!walletClient || !publicClient || !address || !isValidAddress || !amount) return;
@@ -103,13 +111,14 @@ const SendTab = () => {
     }
   };
 
-  const handleSwapThenSend = () => {
+  // Swap directly to recipient — one transaction, tokens land in their wallet
+  const handleSwapToRecipient = () => {
     const quote = apiQuote.quote;
     if (!quote) return;
     apiSwap.executeSwap(quote);
   };
 
-  // Confirm screen
+  // Confirm screen for direct sends (user already has the token)
   if (step === 'confirm' && isValidAddress && amount) {
     return (
       <div className="max-w-lg mx-auto glass rounded-xl p-6 space-y-4 animate-slide-up">
@@ -234,16 +243,20 @@ const SendTab = () => {
           </div>
         </div>
 
-        {/* Swap-and-Send Panel */}
+        {/* Swap-and-Send Panel — tokens go directly to recipient */}
         {needsSwap && (
           <div className="border border-warning/30 bg-warning/5 rounded-xl p-4 space-y-3 animate-slide-up">
             <div className="flex items-center gap-2">
               <span className="text-sm">🔄</span>
-              <span className="text-sm font-semibold text-foreground">You don't have {sendToken.symbol}</span>
+              <span className="text-sm font-semibold text-foreground">Swap & Send in One Transaction</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Swap from another token first, then send. Pick a source token and routing method below.
+              You don't hold {sendToken.symbol}. We'll swap from your tokens and send directly to the recipient — no extra step.
             </p>
+
+            {!isValidAddress && (
+              <p className="text-xs text-warning">Enter recipient address above to get a quote.</p>
+            )}
 
             {/* Source token */}
             <div className="space-y-1.5">
@@ -291,6 +304,26 @@ const SendTab = () => {
               ))}
             </div>
 
+            {/* Quote details */}
+            {apiQuote.quote && (
+              <div className="bg-secondary/50 rounded-lg p-3 space-y-1.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Routing</span>
+                  <span className="text-foreground font-mono">{apiQuote.quote.routing}</span>
+                </div>
+                {gasEstLabel && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Gas Estimate</span>
+                    <span className="text-foreground font-mono">{gasEstLabel}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Recipient</span>
+                  <span className="text-foreground font-mono text-[10px]">{recipient.slice(0, 8)}…{recipient.slice(-4)}</span>
+                </div>
+              </div>
+            )}
+
             {/* Swap status */}
             {apiSwap.step !== 'idle' && (
               <div className={`rounded-lg p-3 text-xs animate-slide-up ${
@@ -299,50 +332,53 @@ const SendTab = () => {
                 'bg-info/10 text-info'
               }`}>
                 <div className="font-medium">
-                  {apiSwap.step === 'done' ? 'Swap complete! Now send below ✓' : apiSwap.step === 'error' ? 'Swap failed' : `${apiSwap.step}…`}
+                  {apiSwap.step === 'done' ? 'Swap & Send complete! Tokens sent to recipient ✓' : apiSwap.step === 'error' ? 'Swap failed' : `${apiSwap.step}…`}
                 </div>
                 {apiSwap.error && <div className="text-xs mt-1 break-all">{apiSwap.error}</div>}
                 {apiSwap.txHash && (
                   <a href={`${activeChain.explorerUrl}/tx/${apiSwap.txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs underline mt-1 block">
-                    View swap on Explorer →
+                    View on Explorer →
                   </a>
                 )}
               </div>
             )}
 
             <Button
-              className="w-full"
-              variant="outline"
-              disabled={!apiQuote.quote || ['swapping', 'approving', 'checking-approval', 'signing-permit', 'building-swap'].includes(apiSwap.step)}
-              onClick={handleSwapThenSend}
+              className="w-full h-12 text-base font-semibold"
+              style={{ background: isConnected && apiQuote.quote && isValidAddress ? 'var(--gradient-primary)' : undefined }}
+              disabled={!apiQuote.quote || !isValidAddress || ['swapping', 'approving', 'checking-approval', 'signing-permit', 'building-swap'].includes(apiSwap.step)}
+              onClick={handleSwapToRecipient}
             >
               {apiSwap.step === 'done'
-                ? '✓ Swapped — Now Send Below'
+                ? '✓ Sent!'
+                : !isValidAddress
+                ? 'Enter Recipient Address'
                 : apiQuote.isLoading
                 ? 'Getting Quote…'
                 : apiQuote.quote
-                ? `Swap ${swapFromToken.symbol} → ${sendToken.symbol} First`
+                ? `Swap & Send ${sendToken.symbol} to Recipient`
                 : `Select source token`}
             </Button>
           </div>
         )}
 
-        <Button
-          className="w-full h-12 text-base font-semibold"
-          style={{ background: isConnected && isValidAddress && amount ? 'var(--gradient-primary)' : undefined }}
-          disabled={!isConnected || !isValidAddress || !amount || (!!needsSwap && apiSwap.step !== 'done')}
-          onClick={() => setStep('confirm')}
-        >
-          {!isConnected
-            ? 'Connect Wallet'
-            : !isValidAddress
-            ? 'Enter Valid Address'
-            : !amount
-            ? 'Enter Amount'
-            : needsSwap && apiSwap.step !== 'done'
-            ? `Swap ${sendToken.symbol} First ↑`
-            : 'Review Transaction'}
-        </Button>
+        {/* Direct send button — only when user has the token */}
+        {!needsSwap && (
+          <Button
+            className="w-full h-12 text-base font-semibold"
+            style={{ background: isConnected && isValidAddress && amount ? 'var(--gradient-primary)' : undefined }}
+            disabled={!isConnected || !isValidAddress || !amount}
+            onClick={() => setStep('confirm')}
+          >
+            {!isConnected
+              ? 'Connect Wallet'
+              : !isValidAddress
+              ? 'Enter Valid Address'
+              : !amount
+              ? 'Enter Amount'
+              : 'Review Transaction'}
+          </Button>
+        )}
       </div>
     </div>
   );
