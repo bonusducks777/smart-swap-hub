@@ -39,7 +39,7 @@ const SwapTab = () => {
   const [toToken, setToToken] = useState<Token>(chainTokens.length > 2 ? chainTokens[2] : chainTokens[1] || chainTokens[0]);
   const [fromAmount, setFromAmount] = useState('');
   const [routeMode, setRouteMode] = useState<RouteMode>('auto');
-  const [slippage, setSlippage] = useState('0.5');
+  const [slippage, setSlippage] = useState('5');
 
   useEffect(() => {
     setFromToken(chainTokens[0]);
