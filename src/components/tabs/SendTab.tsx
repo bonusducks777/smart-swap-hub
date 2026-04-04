@@ -50,11 +50,11 @@ const SendTab = () => {
   const hasBalance = senderBalance && parseFloat(senderBalance.formatted) > 0;
   const needsSwap = !hasBalance && amount && parseFloat(amount) > 0;
 
-  // When swapping, pass recipient so tokens go directly to them
+  // Use EXACT_OUTPUT: user specifies how much sendToken to deliver, API tells us how much swapFromToken is needed
   const validRecipient = isValidAddress ? recipient : undefined;
   const apiQuote = useUniswapApiQuote(
     swapFromToken, sendToken, needsSwap ? amount : '', routeMode,
-    undefined, validRecipient,
+    undefined, validRecipient, 'EXACT_OUTPUT',
   );
   const apiSwap = useApiSwapExecution();
 
