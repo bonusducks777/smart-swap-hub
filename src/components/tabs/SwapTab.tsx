@@ -69,10 +69,9 @@ const SwapTab = () => {
           <button
             key={mode.id}
             onClick={() => setRouteMode(mode.id)}
-            disabled={mode.id === 'crosschain'}
             className={`glass rounded-lg p-3 text-center transition-all ${
               routeMode === mode.id ? 'border-primary/60 glow-primary' : 'hover:border-primary/30'
-            } ${mode.id === 'crosschain' ? 'opacity-50 cursor-not-allowed' : ''}`}
+            }`}
           >
             <div className="text-xl mb-1">{mode.icon}</div>
             <div className="text-xs font-semibold text-foreground">{mode.label}</div>
