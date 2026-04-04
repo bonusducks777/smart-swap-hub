@@ -144,7 +144,7 @@ const SendTab = () => {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Network</span>
-              <span className="text-foreground">{recipientChain.icon} Sepolia Testnet</span>
+              <span className="text-foreground">{activeChain.icon} {activeChain.name}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Type</span>
