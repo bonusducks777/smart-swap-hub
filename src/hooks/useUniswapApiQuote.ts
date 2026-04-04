@@ -93,9 +93,9 @@ export function useUniswapApiQuote(
 
         const { data } = await uniswapApiCall('quote', apiKey, payload);
 
-        const rawAmountOut = BigInt(data.quote?.amountOut || data.quote?.amount || '0');
+        const rawAmountOut = BigInt(data.quote?.output?.amount || data.quote?.amountOut || data.quote?.amount || '0');
         const formattedOut = (Number(rawAmountOut) / 10 ** tokenOut.decimals).toFixed(tokenOut.decimals);
-        const gasEstimate = BigInt(data.quote?.gasEstimate || data.quote?.gasUseEstimate || '0');
+        const gasEstimate = BigInt(data.quote?.gasUseEstimate || data.quote?.gasEstimate || '0');
 
         setQuote({
           amountOut: rawAmountOut,
