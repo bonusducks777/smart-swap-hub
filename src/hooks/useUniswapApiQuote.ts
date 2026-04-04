@@ -27,11 +27,18 @@ function getApiTokenAddress(token: Token): string {
 
 function getRoutingPreference(routeMode: RouteMode): Record<string, any> {
   switch (routeMode) {
-    case 'safe':
-      return { protocols: ['UNISWAPX_V2'] };
-    case 'fastest':
-    case 'crosschain':
     case 'cheapest':
+      // Solver auction — UniswapX Dutch orders for best execution
+      return { protocols: ['DUTCH_V2'] };
+    case 'fastest':
+      // Direct AMM — CLASSIC for immediate settlement
+      return { protocols: ['V3', 'V2'] };
+    case 'safe':
+      // MEV-protected — PRIORITY intent system
+      return { protocols: ['PRIORITY'] };
+    case 'crosschain':
+      // Global — let API find best route across all options
+      return {};
     default:
       return {};
   }
