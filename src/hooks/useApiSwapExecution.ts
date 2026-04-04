@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { sepolia } from 'viem/chains';
 import { useBackendMode } from '@/lib/backend-context';
+import { uniswapApiCall } from '@/lib/uniswap-api';
 import type { ApiQuoteResult } from '@/hooks/useUniswapApiQuote';
 
 export type ApiSwapStep = 'idle' | 'checking-approval' | 'approving' | 'signing-permit' | 'building-swap' | 'swapping' | 'done' | 'error';
-
-const API_BASE = 'https://trade-api.gateway.uniswap.org/v1';
 
 const UNISWAPX_ROUTING = ['DUTCH_V2', 'DUTCH_V3', 'PRIORITY'];
 
@@ -32,25 +31,15 @@ export function useApiSwapExecution() {
 
       // Step 1: Check approval
       setStep('checking-approval');
-      const approvalResp = await fetch(`${API_BASE}/check_approval`, {
-        method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
+      try {
+        const { data: approvalData } = await uniswapApiCall('check_approval', apiKey, {
           token: apiQuote.quote.tokenIn || apiQuote.quote.input?.token,
           amount: apiQuote.quote.amountIn || apiQuote.quote.input?.amount,
           walletAddress: address,
           chainId: 11155111,
-        }),
-      });
+        });
 
-      if (approvalResp.ok) {
-        const approvalData = await approvalResp.json();
         if (approvalData.approval) {
-          // Need to submit an approval transaction
           setStep('approving');
           const approveTx = approvalData.approval;
           const approveHash = await walletClient.sendTransaction({
@@ -63,6 +52,8 @@ export function useApiSwapExecution() {
           });
           await publicClient.waitForTransactionReceipt({ hash: approveHash });
         }
+      } catch {
+        // check_approval may fail on testnet, continue
       }
 
       // Step 2: Sign Permit2 if needed
@@ -79,69 +70,28 @@ export function useApiSwapExecution() {
         });
       }
 
-      // Step 3: Build and execute swap or order
+      // Step 3: Build and execute
       const isUniswapX = UNISWAPX_ROUTING.includes(apiQuote.routing);
+      const endpoint = isUniswapX ? 'order' : 'swap';
+
+      setStep('building-swap');
+      const swapBody: Record<string, any> = { quote: apiQuote.quote };
+      if (signature && apiQuote.permitData) {
+        swapBody.signature = signature;
+        swapBody.permitData = apiQuote.permitData;
+      }
+
+      const { data: swapData } = await uniswapApiCall(endpoint, apiKey, swapBody);
 
       if (isUniswapX) {
-        // UniswapX order flow
-        setStep('building-swap');
-        const orderBody: Record<string, any> = { quote: apiQuote.quote };
-        if (signature && apiQuote.permitData) {
-          orderBody.signature = signature;
-          orderBody.permitData = apiQuote.permitData;
-        }
-
-        const orderResp = await fetch(`${API_BASE}/order`, {
-          method: 'POST',
-          headers: {
-            'x-api-key': apiKey,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify(orderBody),
-        });
-
-        if (!orderResp.ok) {
-          const errData = await orderResp.json().catch(() => ({}));
-          throw new Error(errData.message || errData.error || `Order failed: ${orderResp.status}`);
-        }
-
-        const orderData = await orderResp.json();
-        setTxHash(orderData.orderHash || orderData.hash || 'order-submitted');
+        setTxHash(swapData.orderHash || swapData.hash || 'order-submitted');
         setStep('done');
       } else {
-        // Classic AMM swap flow
-        setStep('building-swap');
-        const swapBody: Record<string, any> = { quote: apiQuote.quote };
-        if (signature && apiQuote.permitData) {
-          swapBody.signature = signature;
-          swapBody.permitData = apiQuote.permitData;
-        }
-
-        const swapResp = await fetch(`${API_BASE}/swap`, {
-          method: 'POST',
-          headers: {
-            'x-api-key': apiKey,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify(swapBody),
-        });
-
-        if (!swapResp.ok) {
-          const errData = await swapResp.json().catch(() => ({}));
-          throw new Error(errData.message || errData.error || `Swap build failed: ${swapResp.status}`);
-        }
-
-        const swapData = await swapResp.json();
         const tx = swapData.swap;
-
-        // Validate
         if (!tx?.data || tx.data === '' || tx.data === '0x') {
           throw new Error('Invalid transaction: empty data field from API');
         }
 
-        // Broadcast
         setStep('swapping');
         const hash = await walletClient.sendTransaction({
           to: tx.to as `0x${string}`,

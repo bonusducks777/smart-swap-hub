@@ -2,22 +2,20 @@ import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { parseUnits } from 'viem';
 import { useBackendMode } from '@/lib/backend-context';
-import { isNativeETH, UNISWAP_ADDRESSES } from '@/lib/contracts';
+import { uniswapApiCall } from '@/lib/uniswap-api';
+import { isNativeETH } from '@/lib/contracts';
 import type { Token } from '@/lib/tokens';
 import type { RouteMode } from '@/hooks/useUniswapQuote';
 
-const API_BASE = 'https://trade-api.gateway.uniswap.org/v1';
 const SEPOLIA_CHAIN_ID = 11155111;
-
-// Native ETH address for the Uniswap API
 const NATIVE_API_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 export interface ApiQuoteResult {
   amountOut: bigint;
   formattedOut: string;
   gasEstimate: bigint;
-  routing: string; // CLASSIC, DUTCH_V2, DUTCH_V3, PRIORITY, WRAP, UNWRAP, BRIDGE
-  quote: any; // raw quote object to pass to /swap or /order
+  routing: string;
+  quote: any;
   permitData: any | null;
   routeMode: RouteMode;
 }
@@ -30,14 +28,14 @@ function getApiTokenAddress(token: Token): string {
 function getRoutingPreference(routeMode: RouteMode): Record<string, any> {
   switch (routeMode) {
     case 'fastest':
-      return { protocols: ['V3'] }; // direct AMM only
+      return { protocols: ['V3'] };
     case 'safe':
-      return { protocols: ['UNISWAPX_V2', 'UNISWAPX_V3'] }; // UniswapX only
+      return { protocols: ['UNISWAPX_V2', 'UNISWAPX_V3'] };
     case 'crosschain':
-      return {}; // let API decide, cross-chain uses BRIDGE routing
+      return {};
     case 'cheapest':
     default:
-      return {}; // let API find best route
+      return {};
   }
 }
 
@@ -80,12 +78,10 @@ export function useUniswapApiQuote(
 
       try {
         const parsedAmount = parseUnits(amountIn, tokenIn.decimals).toString();
-        const tokenInAddr = getApiTokenAddress(tokenIn);
-        const tokenOutAddr = getApiTokenAddress(tokenOut);
 
-        const body: Record<string, any> = {
-          tokenIn: tokenInAddr,
-          tokenOut: tokenOutAddr,
+        const payload: Record<string, any> = {
+          tokenIn: getApiTokenAddress(tokenIn),
+          tokenOut: getApiTokenAddress(tokenOut),
           tokenInChainId: SEPOLIA_CHAIN_ID,
           tokenOutChainId: SEPOLIA_CHAIN_ID,
           type: 'EXACT_INPUT',
@@ -95,30 +91,8 @@ export function useUniswapApiQuote(
           ...getRoutingPreference(routeMode),
         };
 
-        const response = await fetch(`${API_BASE}/quote`, {
-          method: 'POST',
-          headers: {
-            'x-api-key': apiKey,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify(body),
-        });
+        const { data } = await uniswapApiCall('quote', apiKey, payload);
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          if (response.status === 401) {
-            throw new Error('Invalid API key — check Settings');
-          } else if (response.status === 429) {
-            throw new Error('Rate limited — try again in a few seconds');
-          } else {
-            throw new Error(errorData.message || errorData.error || `API error: ${response.status}`);
-          }
-        }
-
-        const data = await response.json();
-
-        // Parse the amount out from the API response
         const rawAmountOut = BigInt(data.quote?.amountOut || data.quote?.amount || '0');
         const formattedOut = (Number(rawAmountOut) / 10 ** tokenOut.decimals).toFixed(tokenOut.decimals);
         const gasEstimate = BigInt(data.quote?.gasEstimate || data.quote?.gasUseEstimate || '0');
