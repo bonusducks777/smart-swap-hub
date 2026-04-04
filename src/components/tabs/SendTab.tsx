@@ -47,8 +47,8 @@ const SendTab = () => {
 
   const isValidAddress = /^0x[a-fA-F0-9]{40}$/.test(recipient);
   const senderBalance = balances.find(b => b.symbol === sendToken.symbol);
-  const hasBalance = senderBalance && parseFloat(senderBalance.formatted) > 0;
-  const needsSwap = !hasBalance && amount && parseFloat(amount) > 0;
+  const hasSufficientBalance = senderBalance && parseFloat(senderBalance.formatted) >= parseFloat(amount || '0');
+  const needsSwap = !hasSufficientBalance && amount && parseFloat(amount) > 0;
 
   // Use EXACT_OUTPUT: user specifies how much sendToken to deliver, API tells us how much swapFromToken is needed
   const validRecipient = isValidAddress ? recipient : undefined;
