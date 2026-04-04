@@ -1,50 +1,55 @@
-import { useState } from 'react';
-import { SUPPORTED_CHAINS, type ChainConfig } from '@/lib/tokens';
+import { SUPPORTED_CHAINS } from '@/lib/tokens';
 import { useChain } from '@/lib/chain-context';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const ChainSelector = () => {
   const { activeChain, setActiveChain } = useChain();
-  const [open, setOpen] = useState(false);
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass text-sm font-medium hover:border-primary/30 transition-all"
-      >
-        <span>{activeChain.icon}</span>
-        <span className="text-foreground hidden sm:inline">{activeChain.name}</span>
-        <span className="text-muted-foreground text-xs">▾</span>
-      </button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center gap-1.5 rounded-lg glass px-3 py-1.5 text-sm font-medium transition-all hover:border-primary/30">
+          <span>{activeChain.icon}</span>
+          <span className="hidden text-foreground sm:inline">{activeChain.name}</span>
+          <span className="text-xs text-muted-foreground">▾</span>
+        </button>
+      </DropdownMenuTrigger>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="fixed right-4 top-16 z-[9999] w-56 glass rounded-xl border border-border/50 p-2 shadow-lg max-h-80 overflow-y-auto">
-            {SUPPORTED_CHAINS.map(chain => (
-              <button
-                key={chain.id}
-                onClick={() => { setActiveChain(chain); setOpen(false); }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all ${
-                  activeChain.id === chain.id
-                    ? 'bg-primary/10 text-primary font-semibold'
-                    : 'text-foreground hover:bg-secondary'
-                }`}
-              >
-                <span className="text-lg">{chain.icon}</span>
-                <div className="text-left">
-                  <div>{chain.name}</div>
-                  <div className="text-[10px] text-muted-foreground">Chain ID: {chain.id}</div>
-                </div>
-                {chain.id === 11155111 && (
-                  <span className="ml-auto text-[9px] bg-warning/20 text-warning px-1.5 py-0.5 rounded-full">TEST</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+      <DropdownMenuContent
+        align="end"
+        sideOffset={8}
+        className="z-[9999] max-h-80 w-56 overflow-y-auto rounded-xl border border-border/50 p-2 glass"
+      >
+        {SUPPORTED_CHAINS.map((chain) => {
+          const isActive = activeChain.id === chain.id;
+
+          return (
+            <DropdownMenuItem
+              key={chain.id}
+              onSelect={() => setActiveChain(chain)}
+              className={isActive
+                ? 'flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-primary focus:bg-primary/10 focus:text-primary'
+                : 'flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground focus:bg-secondary focus:text-foreground'
+              }
+            >
+              <span className="text-lg">{chain.icon}</span>
+              <div className="text-left">
+                <div>{chain.name}</div>
+                <div className="text-[10px] text-muted-foreground">Chain ID: {chain.id}</div>
+              </div>
+              {chain.id === 11155111 && (
+                <span className="ml-auto rounded-full bg-warning/20 px-1.5 py-0.5 text-[9px] text-warning">TEST</span>
+              )}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 
