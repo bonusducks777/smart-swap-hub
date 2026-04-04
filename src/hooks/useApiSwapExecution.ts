@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
-import { sepolia } from 'viem/chains';
 import { useBackendMode } from '@/lib/backend-context';
 import { uniswapApiCall } from '@/lib/uniswap-api';
+import { useChain } from '@/lib/chain-context';
 import type { ApiQuoteResult } from '@/hooks/useUniswapApiQuote';
 
 export type ApiSwapStep = 'idle' | 'checking-approval' | 'approving' | 'signing-permit' | 'building-swap' | 'swapping' | 'done' | 'error';
