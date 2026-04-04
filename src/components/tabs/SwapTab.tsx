@@ -8,7 +8,7 @@ import { useUniswapQuote, type RouteMode } from '@/hooks/useUniswapQuote';
 import { useSwapExecution } from '@/hooks/useSwapExecution';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 
-type RouteMode = 'cheapest' | 'fastest' | 'safe' | 'crosschain';
+// RouteMode type is imported from useUniswapQuote
 
 const ROUTE_MODES: { id: RouteMode; icon: string; label: string; desc: string }[] = [
   { id: 'cheapest', icon: '💸', label: 'Save Money', desc: 'Best price, may take longer' },
