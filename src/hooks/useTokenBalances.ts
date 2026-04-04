@@ -1,6 +1,6 @@
 import { useAccount, useBalance, usePublicClient } from 'wagmi';
 import { useState, useEffect } from 'react';
-import { SEPOLIA_TOKENS } from '@/lib/tokens';
+import { useChain } from '@/lib/chain-context';
 import { ERC20_ABI, isNativeETH } from '@/lib/contracts';
 
 export interface TokenBalance {
@@ -14,6 +14,7 @@ export function useTokenBalances() {
   const { address, isConnected } = useAccount();
   const { data: ethBalance } = useBalance({ address });
   const publicClient = usePublicClient();
+  const { activeChain } = useChain();
   const [erc20Data, setErc20Data] = useState<TokenBalance[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -25,7 +26,7 @@ export function useTokenBalances() {
 
     const fetchBalances = async () => {
       setIsLoading(true);
-      const tokens = SEPOLIA_TOKENS.filter(t => !isNativeETH(t.address));
+      const tokens = activeChain.tokens.filter(t => !isNativeETH(t.address));
       const results: TokenBalance[] = [];
 
       for (const token of tokens) {
@@ -53,13 +54,14 @@ export function useTokenBalances() {
     };
 
     fetchBalances();
-  }, [isConnected, address, publicClient]);
+  }, [isConnected, address, publicClient, activeChain.id]);
 
+  const nativeToken = activeChain.tokens.find(t => isNativeETH(t.address));
   const balances: TokenBalance[] = [];
 
-  if (ethBalance) {
+  if (ethBalance && nativeToken) {
     balances.push({
-      symbol: 'ETH',
+      symbol: nativeToken.symbol,
       balance: ethBalance.value,
       formatted: parseFloat(ethBalance.formatted).toFixed(6),
       decimals: 18,
