@@ -1,12 +1,15 @@
-import { corsHeaders } from '@supabase/supabase-js/cors'
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
 const UNISWAP_API_BASE = 'https://trade-api.gateway.uniswap.org/v1';
-
 const ALLOWED_PATHS = ['quote', 'swap', 'order', 'check_approval', 'swaps', 'orders'];
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   try {
@@ -27,7 +30,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Determine HTTP method — swaps and orders status checks are GET
     const isStatusCheck = (endpoint === 'swaps' || endpoint === 'orders') && payload?.txHash;
     const method = isStatusCheck ? 'GET' : 'POST';
 
@@ -53,10 +55,7 @@ Deno.serve(async (req) => {
 
     return new Response(data, {
       status: response.status,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json',
-      },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
     return new Response(
