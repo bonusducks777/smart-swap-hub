@@ -16,8 +16,24 @@ export async function uniswapApiCall(
     throw new Error(error.message || 'Proxy call failed');
   }
 
-  // Edge function returns the raw Uniswap API response
-  // If the response contains an error field, throw it
+  // Proxy now wraps everything in { _upstreamStatus, _body }
+  if (data?._upstreamStatus !== undefined) {
+    const upstream = data._body;
+    const status = data._upstreamStatus;
+
+    if (status >= 400) {
+      const msg = upstream?.detail || upstream?.errorCode || upstream?.error || `API returned ${status}`;
+      throw new Error(msg);
+    }
+
+    if (upstream?.error) {
+      throw new Error(upstream.error);
+    }
+
+    return { data: upstream, status };
+  }
+
+  // Fallback for old format
   if (data?.error) {
     throw new Error(data.error || data.message || 'API error');
   }

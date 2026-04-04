@@ -19,14 +19,14 @@ Deno.serve(async (req) => {
     if (!endpoint || !apiKey) {
       return new Response(
         JSON.stringify({ error: 'Missing endpoint or apiKey' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     if (!ALLOWED_PATHS.includes(endpoint)) {
       return new Response(
         JSON.stringify({ error: `Invalid endpoint: ${endpoint}` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -53,14 +53,21 @@ Deno.serve(async (req) => {
     const response = await fetch(url, fetchOptions);
     const data = await response.text();
 
-    return new Response(data, {
-      status: response.status,
+    // Always return 200 to the client so supabase.functions.invoke doesn't treat it as an error.
+    // Include the upstream status so the client can check it.
+    const wrapped = JSON.stringify({
+      _upstreamStatus: response.status,
+      _body: data ? JSON.parse(data) : null,
+    });
+
+    return new Response(wrapped, {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
     return new Response(
       JSON.stringify({ error: err.message || 'Proxy error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
