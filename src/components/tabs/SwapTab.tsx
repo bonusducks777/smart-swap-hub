@@ -13,6 +13,7 @@ import { useTokenBalances } from '@/hooks/useTokenBalances';
 const ROUTE_MODES: { id: RouteMode; icon: string; label: string; desc: string }[] = [
   { id: 'auto', icon: '🌐', label: 'Auto', desc: 'Best route via V2/V3/UniswapX' },
   { id: 'payment', icon: '⚡', label: 'Payment', desc: 'Deterministic, no solver delay' },
+  { id: 'protected', icon: '🛡', label: 'Protected', desc: 'MEV-shielded via UniswapX' },
 ];
 
 const STEP_LABELS: Record<string, string> = {
@@ -58,7 +59,7 @@ const SwapTab = () => {
   return (
     <div className="max-w-lg mx-auto space-y-4 animate-slide-up">
       {/* Route Mode Selector */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {ROUTE_MODES.map(rm => (
           <button
             key={rm.id}
@@ -75,22 +76,25 @@ const SwapTab = () => {
       </div>
 
       {/* Mode Explanation */}
-      <div className="glass rounded-lg px-4 py-3 space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{ROUTE_MODES.find(r => r.id === routeMode)?.icon}</span>
-          <span className="text-sm font-semibold text-foreground">
-            {routeMode === 'auto' ? 'Auto Mode' : 'Payment Mode'}
-          </span>
-          <span className="text-[10px] font-mono bg-secondary px-2 py-0.5 rounded text-muted-foreground">
-            {routeMode === 'auto' ? 'V3 + V2 + UNISWAPX_V3' : 'V3 + V2'}
-          </span>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {routeMode === 'auto'
-            ? 'API picks the best route — may use solver auctions (UniswapX) for better pricing'
-            : 'Direct AMM execution only — deterministic, no solver delay, ideal for checkout flows'}
-        </p>
-      </div>
+      {(() => {
+        const active = ROUTE_MODES.find(r => r.id === routeMode)!;
+        const explanations: Record<RouteMode, { protocols: string; detail: string }> = {
+          auto: { protocols: 'V3 + V2 + UNISWAPX_V3', detail: 'API picks the best route — may use solver auctions (UniswapX) for better pricing' },
+          payment: { protocols: 'V3 + V2', detail: 'Direct AMM execution only — deterministic, no solver delay, ideal for checkout flows' },
+          protected: { protocols: 'UNISWAPX_V3', detail: 'Order hidden from public mempool — solvers fill privately, reducing sandwich attacks' },
+        };
+        const info = explanations[routeMode];
+        return (
+          <div className="glass rounded-lg px-4 py-3 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{active.icon}</span>
+              <span className="text-sm font-semibold text-foreground">{active.label} Mode</span>
+              <span className="text-[10px] font-mono bg-secondary px-2 py-0.5 rounded text-muted-foreground">{info.protocols}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{info.detail}</p>
+          </div>
+        );
+      })()}
 
       {/* Swap Card */}
       <div className="glass rounded-xl p-4 space-y-3">

@@ -28,11 +28,11 @@ function getApiTokenAddress(token: Token): string {
 function getRoutingPreference(routeMode: RouteMode): Record<string, any> {
   switch (routeMode) {
     case 'payment':
-      // Deterministic, no solver delay — best for checkout UX
       return { protocols: ['V3', 'V2'] };
+    case 'protected':
+      return { protocols: ['UNISWAPX_V3'] };
     case 'auto':
     default:
-      // Let the API pick the best route
       return { protocols: ['V3', 'V2', 'UNISWAPX_V3'] };
   }
 }
