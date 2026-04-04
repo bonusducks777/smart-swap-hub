@@ -29,14 +29,14 @@ function getApiTokenAddress(token: Token): string {
 function getRoutingPreference(routeMode: RouteMode): Record<string, any> {
   switch (routeMode) {
     case 'cheapest':
-      return { protocols: ['UNISWAPX_V2'] };
+      return { protocols: ['UNISWAPX_V3'] };
     case 'fastest':
       return { protocols: ['V3', 'V2'] };
     case 'safe':
       return { protocols: ['UNISWAPX_V3'] };
     case 'crosschain':
     default:
-      return {};
+      return { protocols: ['V3', 'V2', 'V4', 'UNISWAPX_V3'] };
   }
 }
 
