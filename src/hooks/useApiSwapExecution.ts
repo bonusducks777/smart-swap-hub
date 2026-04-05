@@ -81,6 +81,10 @@ export function useApiSwapExecution() {
         swapBody.signature = signature;
         swapBody.permitData = apiQuote.permitData;
       }
+      // Ensure recipient is forwarded to /swap so output goes to the right address
+      if (apiQuote.recipient) {
+        swapBody.recipient = apiQuote.recipient;
+      }
 
       const { data: swapData } = await uniswapApiCall(endpoint, apiKey, swapBody);
 

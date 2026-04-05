@@ -136,6 +136,7 @@ export function useUniswapApiQuote(
           routeMode,
           chainId: activeChain.id,
           quoteType,
+          recipient: recipient || undefined,
         });
         setError(null);
       } catch (err) {
