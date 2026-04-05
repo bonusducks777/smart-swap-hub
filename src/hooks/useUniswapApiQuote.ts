@@ -23,6 +23,7 @@ export interface ApiQuoteResult {
   routeMode: RouteMode;
   chainId: number;
   quoteType: QuoteType;
+  recipient?: string;
 }
 
 function getApiTokenAddress(token: Token): string {
@@ -135,6 +136,7 @@ export function useUniswapApiQuote(
           routeMode,
           chainId: activeChain.id,
           quoteType,
+          recipient: recipient || undefined,
         });
         setError(null);
       } catch (err) {
