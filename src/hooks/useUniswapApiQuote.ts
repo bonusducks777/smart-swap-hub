@@ -23,6 +23,7 @@ export interface ApiQuoteResult {
   routeMode: RouteMode;
   chainId: number;
   quoteType: QuoteType;
+  recipient?: string;
 }
 
 function getApiTokenAddress(token: Token): string {
